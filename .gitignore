@@ -1,0 +1,6 @@
+*.pyc
+*.swp
+*.log
+*.svg
+__pycache__/
+venv/
