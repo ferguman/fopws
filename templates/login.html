@@ -4,9 +4,28 @@
 <title>Grow Device Login</title>
 </head>
 <body>
+
+<p>
+ (% with messages = get_flashed_messages() %)
+  (% if messages %)
+    <ul class=flashes>
+    (% for message in messages %)
+      <li>(( message ))</li>
+    (% endfor %)
+    </ul>
+  (% endif %)
+(% endwith %) 
+</p>
+
 <form method='POST' action='/login'>
+(% if error %)
+    <p class=error><strong> (( error )) </strong>
+(% endif %)
+<p>
 Username <input name='username' type='TEXT' width='40'>
+<p>
 Password <input name='password' type='TEXT' width='40'>
+<p>
 <input type='SUBMIT' value='Submit'> 
 </form> 
 </body>

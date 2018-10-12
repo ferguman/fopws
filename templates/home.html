@@ -37,13 +37,23 @@ div.tab button.active {
 }
 </style>
 <head>
- <title>MVP Dashboard</title>
- <meta http-equiv="refresh" content="3600">
+ <title>Farm Device Dashboard</title>
 </head>
 <body>
 
-<h1>OpenAg MVP Data Charting:</h1>
-<p>Click on a tab to display</p>
+<p>
+ (% with messages = get_flashed_messages() %)
+  (% if messages %)
+    <ul class=flashes>
+    (% for message in messages %)
+      <li>(( message ))</li>
+    (% endfor %)
+    </ul>
+  (% endif %)
+(% endwith %) 
+</p>
+
+<a href="/logout">logout</a>
 
 <div class="tab">
   <button class="tablinks" onclick="openTab(event, 'Temperature')">Temperature</button>
@@ -70,7 +80,7 @@ div.tab button.active {
   <h3>Camera</h3>
   <p>Latest picture goes here.</p>
   <p>
-  <img src="image.jpg" alt="Latest MVP image" style="width:640px;height:480px;">
+  <img src="image.jpg?asdfdsfdfdf" alt="Latest image" style="width:640px;height:480px;">
   </p>
 </div>
 
@@ -81,9 +91,6 @@ div.tab button.active {
 <p>Discussion is on the <a target="_blank" href="http://forum.openag.media.mit.edu">MIT OpenAg Forum</a></p>
 <p>Code is sourced on <a target="_blank" href="https://github.com/webbhm">Github</a></p>
 <p/>
-<h3>Release Version</h3>
-<p>Blossom</p>
-<h3>A special thanks to the early testers of the MVP</h3>
 <ul>
 <li>Melanie Shimano</li>
 <li>Phil Speth</li>

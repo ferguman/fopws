@@ -4,3 +4,6 @@
 *.svg
 __pycache__/
 venv/
+private_settings.py
+static/
+!static/s3_error.jpg
