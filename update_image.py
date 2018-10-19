@@ -6,7 +6,7 @@ from flask import current_app
 import boto3
 import botocore
 
-from private_settings import fop_aws_access_key_id, fop_aws_secret_access_key, image_file_bucket_name
+from config.private_key import fop_aws_access_key_id, fop_aws_secret_access_key, image_file_bucket_name
 
 
 def get_latest_s3_image_file_key(device_id):
@@ -43,7 +43,6 @@ def update_image_file_from_s3(device_id, image_file_path):
 
     try:
         # Get the s3 image name from postgres
-        current_app.logger.info('got here 4')
         return fetch_s3_file(get_latest_s3_image_file_key(device_id), image_file_path)
     except:
         current_app.logger.error('error fetching image from S3: {}, {}'.format(exc_info[0], exc_info[1]))

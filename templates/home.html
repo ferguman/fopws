@@ -40,7 +40,7 @@ div.tab button.active {
  <title>Farm Device Dashboard</title>
 </head>
 <body>
-
+<div id="fopdcw">
 <p>
  (% with messages = get_flashed_messages() %)
   (% if messages %)
@@ -56,31 +56,27 @@ div.tab button.active {
 <a href="/logout">logout</a>
 
 <div class="tab">
-  <button class="tablinks" onclick="openTab(event, 'Temperature')">Temperature</button>
-  <button class="tablinks" onclick="openTab(event, 'Humidity')">Humidity</button>
-  <button class="tablinks" onclick="openTab(event, 'Camera')">Camera</button>
+  <button class="tablinks" v-on:click="open_charts_tab">Charts</button>
+  <button class="tablinks" v-on:click="open_image_tab">Camera</button>
   <button class="tablinks" onclick="openTab(event, 'About')">About</button>
 </div>
 
-<div id="Temperature" class="tabcontent">
-  <h3>Temperature</h3>
-    <object type="image/svg+xml" data="temp_chart.svg">
-	"Your browser does not support SVG
+<div id="Charts" class="tabcontent">
+  <h3>Charts</h3>
+    <object type="image/svg+xml" v-bind:data="air_temperature" alt="Latest temperature chart">
+        "your broswer does not support SVG"
     </object>
-</div>
-
-<div id="Humidity" class="tabcontent">
-  <h3>Humidity</h3>
-    <object type="image/svg+xml" data="humidity_chart.svg"/>
-	"Your browser does not support SVG
+    <object type="image/svg+xml" v-bind:data="air_co2" alt="Latest co2 chart">
+        "your broswer does not support SVG"
     </object>
+    <p><button v-on:click="update_charts">update</button></p>
 </div>
 
 <div id="Camera" class="tabcontent">
   <h3>Camera</h3>
-  <p>Latest picture goes here.</p>
   <p>
-  <img src="image.jpg?asdfdsfdfdf" alt="Latest image" style="width:640px;height:480px;">
+	  <img v-bind:src="image" alt="Latest image" style="width:640px;height:480px;">
+	  <button v-on:click="update_image">update</button>
   </p>
 </div>
 
@@ -98,10 +94,40 @@ div.tab button.active {
 <li>Peter Webb</li>
 </ul>
 
-
+</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
 <script>
+
+var app = new Vue({
+    el: '#fopdcw',
+    data: {
+        image: "/image.jpg?" + new Date().getTime(),
+        air_temperature: "/chart/air_temperature?" + new Date().getTime(),
+        air_co2: "/chart/air_co2?" + new Date().getTime()
+    },
+    methods: {
+	open_charts_tab: function() {
+		openTab(event, 'Charts');
+		this.update_charts();
+	},
+	open_image_tab: function() {
+		openTab(event, 'Camera');
+		this.update_image();
+	},
+        update_charts: function() {
+                 this.air_temperature = "/chart/air_temperature?" + new Date().getTime();
+                 this.air_co2 = "/chart/air_co2?" + new Date().getTime()
+        },
+	update_image: function() {
+		this.image = "/image.jpg?" + new Date().getTime();
+	}
+    }
+})
+
+
 function openTab(evt, tabName) {
     var i, tabcontent, tablinks;
     tabcontent = document.getElementsByClassName("tabcontent");
@@ -116,7 +142,6 @@ function openTab(evt, tabName) {
     evt.currentTarget.className += " active";
 }
 </script>
-     
 </body>
 </html> 
 
