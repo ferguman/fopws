@@ -109,11 +109,11 @@ var app = new Vue({
         air_co2: "/chart/air_co2?" + new Date().getTime()
     },
     methods: {
-	open_charts_tab: function() {
+	open_charts_tab: function(event) {
 		openTab(event, 'Charts');
 		this.update_charts();
 	},
-	open_image_tab: function() {
+	open_image_tab: function(event) {
 		openTab(event, 'Camera');
 		this.update_image();
 	},
