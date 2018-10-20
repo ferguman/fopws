@@ -39,7 +39,7 @@ div.tab button.active {
 <head>
  <title>Farm Device Dashboard</title>
 </head>
-<body>
+<body onload="openTab(event, 'Charts');">
 <div id="fopdcw">
 <p>
  (% with messages = get_flashed_messages() %)
@@ -53,31 +53,32 @@ div.tab button.active {
 (% endwith %) 
 </p>
 
-<a href="/logout">logout</a>
 
 <div class="tab">
   <button class="tablinks" v-on:click="open_charts_tab">Charts</button>
   <button class="tablinks" v-on:click="open_image_tab">Camera</button>
   <button class="tablinks" onclick="openTab(event, 'About')">About</button>
+  <button class="tablinks" onclick='window.location="/logout"'>Logout</button>
 </div>
 
 <div id="Charts" class="tabcontent">
   <h3>Charts</h3>
+    <p>Chart data is typically updated evey 20 mintues. Click 
+    <button v-on:click="update_charts">update</button> to refresh the charts.</p>
     <object type="image/svg+xml" v-bind:data="air_temperature" alt="Latest temperature chart">
         "your broswer does not support SVG"
     </object>
     <object type="image/svg+xml" v-bind:data="air_co2" alt="Latest co2 chart">
         "your broswer does not support SVG"
     </object>
-    <p><button v-on:click="update_charts">update</button></p>
 </div>
 
 <div id="Camera" class="tabcontent">
   <h3>Camera</h3>
-  <p>
-	  <img v-bind:src="image" alt="Latest image" style="width:640px;height:480px;">
-	  <button v-on:click="update_image">update</button>
-  </p>
+      <p>Images are typically updated once per day. Click 
+      <button v-on:click="update_image">update</button> to refresh the image.
+      </p>
+      <img v-bind:src="image" alt="Latest image" style="width:720px;">
 </div>
 
 <div id="About" class="tabcontent">
@@ -126,7 +127,6 @@ var app = new Vue({
 	}
     }
 })
-
 
 function openTab(evt, tabName) {
     var i, tabcontent, tablinks;

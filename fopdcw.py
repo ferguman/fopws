@@ -55,7 +55,7 @@ def process_login():
 
     if authentic(request.form['username'], request.form['password']):
         session['user'] = create_new_session(request.form['username'])
-        flash('login succesful')
+        #- flash('login succesful')
         return render_template('home.html')
     else:
         session['user'] = None
@@ -105,7 +105,9 @@ def chart(data_type):
 
 def authentic(username, password):
     #TODO - authenticate against the fop db
-    return username == 'ferguman' and password == 'wood$lye9sheep'
+
+    return (username == 'ferguman' and password == 'wood$lye9sheep') or\
+           (username == 'peter' and password == 'book$hit&sheep')
 
 def create_new_session(username):
 
