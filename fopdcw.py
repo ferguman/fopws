@@ -55,13 +55,10 @@ def process_login():
 
     if authentic(request.form['username'], request.form['password']):
         session['user'] = create_new_session(request.form['username'])
-        #- flash('login succesful')
         return render_template('home.html')
     else:
         session['user'] = None
         flash('incorrect username or password')
-        #- error = 'incorrect username or password'
-        #- return render_template('login.html', error=error)
         return render_template('login.html')
 
 @app.route('/logout', methods=['GET'])
@@ -80,8 +77,6 @@ def image():
 
         if result['bytes'] != None:
             return Response(result['bytes'], mimetype='image/jpg')
-            #- return Response(BytesIO(result['bytes']), mimetype='image/jpg')
-            #- return send_file(BytesIO(result['bytes']), mimetype='image/png')
         else:
             return send_from_directory(os.path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
     except:
@@ -95,7 +90,7 @@ def chart(data_type):
 
     logger.info('chart request for {}'.format(data_type))
 
-    result = generate_chart(data_type)
+    result = generate_chart(data_type, session['user']['ct_offset'])
     
     if result['bytes'] != None:
         return Response(result['bytes'], mimetype='image/svg+xml')
@@ -112,8 +107,12 @@ def authentic(username, password):
 def create_new_session(username):
 
     #TODO - the device id needs to be looked up based upon the username
+    # ct_offset is the number of hours that the user wants their time data to be offset from central time.
+    # The server (Ubuntu) generates central time as per US rules for daylight savings so this setting shouldn't need
+    # to be adjusted to account for day light savings time.
     s = {'user_name': username, 'user_id':'sdfds', 'org_id':'dac952cd89684c26a508813861015995', 
-         'device_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99'}
+         'device_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99',
+         'ct_offset':0}
 
     return s
 

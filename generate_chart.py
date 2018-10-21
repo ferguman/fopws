@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from os import getcwd
 from sys import exc_info
 
@@ -52,8 +52,10 @@ from config.config import chart_list, couchdb_database_name_b64_cipher, couchdb_
 from nacl_fop import decrypt
 import re
 
-#- def generate_chart(couchdb_url, chart_info, logger):
-def generate_chart(data_type):
+# TODO: implement the ct_offset parameter. It should shift the time ct_offset hours from the 
+#       system time. The system time is assumed to be central time hence the name ct_offset.
+#
+def generate_chart(data_type, ct_offset):
 
     # first find the chart type that the user is requesting
     chart_info = None
@@ -84,29 +86,28 @@ def generate_chart(data_type):
 
         try:
 
-            # TODO: Figure out why we need to reverse the list.  
             global enable_display_unit_error_msg
             enable_display_unit_error_msg = True
-            #- v_lst = [float(x['value']['value']) for x in r.json()['rows']]
             v_lst = [float(apply_unit_conversion(x, chart_info)) for x in r.json()['rows']]
-            #- v_lst.reverse()
-            ts_lst = [datetime.fromtimestamp(x['value']['timestamp']).strftime('%m/%d %I:%M %p') for x in r.json()['rows']]
+
+            td = timedelta(hours=ct_offset)
+            ts_lst = [(datetime.fromtimestamp(x['value']['timestamp']) + td).strftime('%m/%d %I:%M %p')\
+                      for x in r.json()['rows']]
             ts_lst.reverse()
 
-            # line_chart = pygal.Line(interpolate='cubic')
-            line_chart = pygal.Line()
+            line_chart = pygal.Line(x_label_rotation=20, show_minor_x_labels=False)
             line_chart.title = chart_info['chart_title']
             line_chart.y_title= chart_info['y_axis_title']
             line_chart.x_title= chart_info['x_axis_title']
+
             line_chart.x_labels = ts_lst
+            line_chart.x_labels_major = ts_lst[::8]
 
             #need to reverse order to go from earliest to latest
             v_lst.reverse()
 
             line_chart.add(chart_info['data_stream_name'], v_lst)
-            #- line_chart.render_to_file(getcwd() + '/static/' + chart_info['chart_file_name'])
             
-            #- f = BytesIO()
             f = line_chart.render()
             return {'bytes':f}
             
