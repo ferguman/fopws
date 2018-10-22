@@ -2,14 +2,16 @@ from io import BytesIO
 from logging import INFO, DEBUG, getLogger
 from sys import exc_info
 
-from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory, session
+from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
+                  session
 import requests
 
 from fopdcw_logger import get_top_level_logger
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
+from nacl_fop import decrypt
 
-from config.config import fop_url_for_get_image
+from config.config import chart_list, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
 class FopwFlask(Flask):
 
@@ -28,18 +30,11 @@ class FopwFlask(Flask):
 
 app = FopwFlask(__name__)
 
-# TODO: Move the secret key to a "secure store"
-app.secret_key = b'x4gfl}SbJR;zCUO&Kk0twJ:EBhz/ZEu'
+app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 
 # This function has the side effect of injecting the fopdcw log handler into the werkzeug and
 # flask.app loggers.
 logger = get_top_level_logger()
-
-# Inject the gunicorn log handlers into Flask
-#- app.logger.handlers = getLogger('gunicorn.error').handlers
-# Set the Flask log level - this has no impact Gunicorn's log level
-# TODO - Move the logging level to the configuration file
-# app.logger.setLevel(DEBUG)
 
 #TODO - Need to create decorator that restricts all the routes to logged on users
 @app.route("/login", methods=['GET'])
@@ -55,7 +50,7 @@ def process_login():
 
     if authentic(request.form['username'], request.form['password']):
         session['user'] = create_new_session(request.form['username'])
-        return render_template('home.html')
+        return render_template('home.html', chart_list=chart_list)
     else:
         session['user'] = None
         flash('incorrect username or password')

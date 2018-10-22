@@ -65,12 +65,12 @@ div.tab button.active {
   <h3>Charts</h3>
     <p>Chart data is typically updated evey 20 mintues. Click 
     <button v-on:click="update_charts">update</button> to refresh the charts.</p>
-    <object type="image/svg+xml" v-bind:data="air_temperature" alt="Latest air temperature chart">
+(% for chart in chart_list: %)
+    <object type="image/svg+xml" v-bind:data=((chart['vue_name'])) alt="Latest ((chart['chart_title'])) chart">
         "your broswer does not support SVG"
     </object>
-    <object type="image/svg+xml" v-bind:data="air_co2" alt="Latest co2 chart">
-        "your broswer does not support SVG"
-    </object>
+(% endfor %)
+
 </div>
 
 <div id="Camera" class="tabcontent">
@@ -106,8 +106,9 @@ var app = new Vue({
     el: '#fopdcw',
     data: {
         image: "/image.jpg?" + new Date().getTime(),
-        air_temperature: "/chart/air_temperature?" + new Date().getTime(),
-        air_co2: "/chart/air_co2?" + new Date().getTime()
+(% for chart in chart_list: %)
+        ((chart['vue_name'])): "/chart/((chart['vue_name']))?" + new Date().getTime(),
+(% endfor %)
     },
     methods: {
 	open_charts_tab: function(event) {
@@ -119,8 +120,9 @@ var app = new Vue({
 		this.update_image();
 	},
         update_charts: function() {
-                 this.air_temperature = "/chart/air_temperature?" + new Date().getTime();
-                 this.air_co2 = "/chart/air_co2?" + new Date().getTime()
+(% for chart in chart_list: %)
+                 this.((chart['vue_name'])) = "/chart/((chart['vue_name']))?" + new Date().getTime();
+(% endfor %)
         },
 	update_image: function() {
 		this.image = "/image.jpg?" + new Date().getTime();
