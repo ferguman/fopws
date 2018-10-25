@@ -1,5 +1,4 @@
 from io import BytesIO
-from logging import INFO, DEBUG, getLogger
 from sys import exc_info
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
@@ -7,9 +6,10 @@ from flask import flash, Flask, render_template, request, Response, send_file, s
 import requests
 import psycopg2
 
-from logger import get_top_level_logger
+from django_authenticator import get_user_password_hash, hash_match
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
+from logger import get_top_level_logger
 from nacl_fop import decrypt, decrypt_dict_vals
 
 from config.config import dbconfig, chart_list, flask_app_secret_key_b64_cipher, fop_url_for_get_image
@@ -50,9 +50,11 @@ def process_login():
     error = None
 
     if authenticate(request.form['username'], request.form['password']):
+        logger.info('authenticate succesful')
         session['user'] = create_new_session(request.form['username'])
         return render_template('home.html', chart_list=chart_list)
     else:
+        logger.warning('authentication failed.')
         session['user'] = None
         flash('incorrect username or password')
         return render_template('login.html')
@@ -94,68 +96,53 @@ def chart(data_type):
         #TODO: Need to put in a proper error message here.
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
-def get_user_password_hash(cur, username):
-
-    try:
-        # TODO: change sql so that it only returns the top 2 records
-        sql = """ Select password from Auth_User where username = %s; """
-        cur.execute(sql, (username,))
-
-        rc = cur.rowcount
-        # TEST HOOK rc = 2
-        if rc == 0:        
-            logger.warning('User not in database {}'.format(username))
-            return None
-        elif rc == 1:
-            # need to authenticate
-            logger.debug('password info: {}'.format(cur.fetchone()[0]))
-            return cur.fetchone()[0] 
-        else:
-            logger.error('duplicate user found in database {}'.format(username))
-            return None
-    except:
-        logger.error('fault encountered in get_user_password_hash: {}, {}'.format(exc_info()[0], exc_info()[1]))
 
 
+# Djangao currently limits usernames to 150 characters
+#
 def authenticate(username, password):
-    #TODO - authenticate against the fop db
 
-    # TODO assert limits on the unsername and password lengths.
-    logger.info('login request from {}'.format(username))
-       
     if username == 'peter' and password == 'book$hit&sheep':
         return True
 
     # Is the user in the db?
     try:
+        assert ( username != None), 'empty username'
+        assert (len(username) > 1 and len(username) <= 150), 'username must be 1 to 150 characters long'
+        logger.info('login request from {}'.format(username))
+
         dbauthinfo = decrypt_dict_vals(dbconfig, {'password'})
         dbauthinfo['password'] = dbauthinfo['password'].decode('utf-8')
 
+        # TODO: Need to wrap the connection in a context so it can be closed automatically
         # Lookup the username in the database.
         con = psycopg2.connect(**dbauthinfo)
         cur = con.cursor() 
 
         result = get_user_password_hash(cur, username)
 
-
-        # TODO - put hash_match in django_authenitcateor
-        return hash_match(result, password)
-
-        if result != None
         cur.close()
         con.close()
 
-    except:
-        logger.error('cannot connect to the user database: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        if (result != None):
+            return hash_match(result, password)
+        else:
+            return False
 
-    return False
+    except:
+        logger.error('authenticate exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return False
 
 def create_new_session(username):
 
-    #TODO - the device id needs to be looked up based upon the username
+    #TODO - hydrate the session based uipon the users database profile.
     # ct_offset is the number of hours that the user wants their time data to be offset from central time.
     # The server (Ubuntu) generates central time as per US rules for daylight savings so this setting shouldn't need
     # to be adjusted to account for day light savings time.
+    # TODO: The ct_offset stuff won't work. figure out a way to store the users preferred time zone and refactor
+    # to slide all display times from the central time (i.e. server time) to the users time.  Make server time
+    # a configuration setting.
+    #
     s = {'user_name': username, 'user_id':'sdfds', 'org_id':'dac952cd89684c26a508813861015995', 
          'device_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99',
          'ct_offset':0}
