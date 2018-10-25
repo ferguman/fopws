@@ -5,13 +5,14 @@ from sys import exc_info
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session
 import requests
+import psycopg2
 
-from fopdcw_logger import get_top_level_logger
+from logger import get_top_level_logger
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
-from nacl_fop import decrypt
+from nacl_fop import decrypt, decrypt_dict_vals
 
-from config.config import chart_list, flask_app_secret_key_b64_cipher, fop_url_for_get_image
+from config.config import dbconfig, chart_list, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
 class FopwFlask(Flask):
 
@@ -32,8 +33,8 @@ app = FopwFlask(__name__)
 
 app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 
-# This function has the side effect of injecting the fopdcw log handler into the werkzeug and
-# flask.app loggers.
+# This function has the side effect of injecting the fopdcw log handler into the 
+# flask.app logger.
 logger = get_top_level_logger()
 
 #TODO - Need to create decorator that restricts all the routes to logged on users
@@ -48,7 +49,7 @@ def process_login():
 
     error = None
 
-    if authentic(request.form['username'], request.form['password']):
+    if authenticate(request.form['username'], request.form['password']):
         session['user'] = create_new_session(request.form['username'])
         return render_template('home.html', chart_list=chart_list)
     else:
@@ -93,11 +94,61 @@ def chart(data_type):
         #TODO: Need to put in a proper error message here.
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
-def authentic(username, password):
+def get_user_password_hash(cur, username):
+
+    try:
+        # TODO: change sql so that it only returns the top 2 records
+        sql = """ Select password from Auth_User where username = %s; """
+        cur.execute(sql, (username,))
+
+        rc = cur.rowcount
+        # TEST HOOK rc = 2
+        if rc == 0:        
+            logger.warning('User not in database {}'.format(username))
+            return None
+        elif rc == 1:
+            # need to authenticate
+            logger.debug('password info: {}'.format(cur.fetchone()[0]))
+            return cur.fetchone()[0] 
+        else:
+            logger.error('duplicate user found in database {}'.format(username))
+            return None
+    except:
+        logger.error('fault encountered in get_user_password_hash: {}, {}'.format(exc_info()[0], exc_info()[1]))
+
+
+def authenticate(username, password):
     #TODO - authenticate against the fop db
 
-    return (username == 'ferguman' and password == 'wood$lye9sheep') or\
-           (username == 'peter' and password == 'book$hit&sheep')
+    # TODO assert limits on the unsername and password lengths.
+    logger.info('login request from {}'.format(username))
+       
+    if username == 'peter' and password == 'book$hit&sheep':
+        return True
+
+    # Is the user in the db?
+    try:
+        dbauthinfo = decrypt_dict_vals(dbconfig, {'password'})
+        dbauthinfo['password'] = dbauthinfo['password'].decode('utf-8')
+
+        # Lookup the username in the database.
+        con = psycopg2.connect(**dbauthinfo)
+        cur = con.cursor() 
+
+        result = get_user_password_hash(cur, username)
+
+
+        # TODO - put hash_match in django_authenitcateor
+        return hash_match(result, password)
+
+        if result != None
+        cur.close()
+        con.close()
+
+    except:
+        logger.error('cannot connect to the user database: {}, {}'.format(exc_info()[0], exc_info()[1]))
+
+    return False
 
 def create_new_session(username):
 

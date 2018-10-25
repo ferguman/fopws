@@ -6,7 +6,7 @@ from sys import exc_info
 import pygal
 import requests
 
-from fopdcw_logger import get_sub_logger
+from logger import get_sub_logger
 
 logger = get_sub_logger('generate_chart')
 

@@ -18,7 +18,7 @@ from nacl_fop import decrypt
 from config.private_key import hmac_secret_key, fop_jose_id, fopdcw_jose_id
 from config.config import jws_secret_key_b64_enc
 
-from fopdcw_logger import get_sub_logger 
+from logger import get_sub_logger 
 
 # Note: This module uses JWT security (via jose).  Paseto is another system for implemeting token based security.
 
