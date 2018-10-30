@@ -68,14 +68,15 @@ def pbkdf2(password, salt, iterations, dklen=0, digest=None):
     dklen = dklen or None
     password = force_bytes(password)
     salt = force_bytes(salt)
-    logger.info('digest: {}, password: {}, salt: {}, iterations: {}, dklen: {}'.format(
-                 digest().name, password, salt, iterations, dklen))
+    # DEBUG ONLY
+    # logger.info('digest: {}, password: {}, salt: {}, iterations: {}, dklen: {}'.format(
+    #             digest().name, password, salt, iterations, dklen))
     return hashlib.pbkdf2_hmac(digest().name, password, salt, iterations, dklen)
 
 from base64 import b64encode, b64decode
 #
 # django_hash -> pbkdf2_sha256$(iterations)$(salt)$(b64_hash)
-def hash_match(django_hash, password) -> bool:
+def check_password_hash(django_hash, password) -> bool:
 
     try:
 
@@ -90,14 +91,17 @@ def hash_match(django_hash, password) -> bool:
 
         calculated_hash = pbkdf2(password, hash_parts[2] , int(hash_parts[1]), dklen=0, digest=None)
   
-        return calculated_hash  == b64decode(hash_parts[3]) 
+        return calculated_hash == b64decode(hash_parts[3]) 
 
 
     except:
         logger.error('hash match error: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return False
 
-def get_user_password_hash(cur, username):
+# returns the Django hash information as  -> (hash_type)$(iterations)$(salt)$(b64_hash)
+#
+def get_hash_info(cur, username):
+
 
     try:
         # TODO: change sql so that it only returns the top 2 records

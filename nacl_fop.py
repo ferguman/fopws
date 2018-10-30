@@ -17,7 +17,8 @@ def decrypt_dict_vals(d: dict, dict_keys_to_decrypt):
     new_dict = {}
     for key, val  in d.items():
         if key in dict_keys_to_decrypt:
-            new_dict[key] = decrypt(val)
+            #- new_dict[key] = decrypt(val)
+            new_dict[key] = decrypt(val).decode('utf-8')
         else:
             new_dict[key] = val
 

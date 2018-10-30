@@ -6,7 +6,8 @@ from flask import flash, Flask, render_template, request, Response, send_file, s
 import requests
 import psycopg2
 
-from django_authenticator import get_user_password_hash, hash_match
+from DbConnection import DbConnection
+from django_authenticator import get_hash_info, check_password_hash 
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
@@ -47,17 +48,24 @@ def get_login_form():
 @app.route("/login", methods=['POST'])
 def process_login():
 
-    error = None
+    try:
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-    if authenticate(request.form['username'], request.form['password']):
-        logger.info('authenticate succesful')
-        session['user'] = create_new_session(request.form['username'])
-        return render_template('home.html', chart_list=chart_list)
-    else:
-        logger.warning('authentication failed.')
-        session['user'] = None
-        flash('incorrect username or password')
-        return render_template('login.html')
+            if authenticate(request.form['username'][0:150], request.form['password'], cur):
+                logger.info('authenticate succesful')
+                session['user'] = create_new_session(request.form['username'][0:150], cur)
+                return render_template('home.html', chart_list=chart_list)
+            else:
+                logger.warning('authentication failed.')
+                session['user'] = None
+                flash('incorrect username or password')
+                return render_template('login.html')
+    except:
+         logger.error('process_login exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
+         session['user'] = None
+         flash('system error F_PL')
+         return render_template('login.html')
+
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -97,12 +105,13 @@ def chart(data_type):
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
 
-
-# Djangao currently limits usernames to 150 characters
+# Django currently limits usernames to 150 characters
 #
-def authenticate(username, password):
+def authenticate(username, password, cur):
 
-    if username == 'peter' and password == 'book$hit&sheep':
+    if username == 'peter'\
+        and password == 'book$hit&sheep':
+
         return True
 
     # Is the user in the db?
@@ -111,29 +120,32 @@ def authenticate(username, password):
         assert (len(username) > 1 and len(username) <= 150), 'username must be 1 to 150 characters long'
         logger.info('login request from {}'.format(username))
 
-        dbauthinfo = decrypt_dict_vals(dbconfig, {'password'})
-        dbauthinfo['password'] = dbauthinfo['password'].decode('utf-8')
+        #- dbauthinfo = decrypt_dict_vals(dbconfig, {'password'})
+        #- dbauthinfo['password'] = dbauthinfo['password'].decode('utf-8')
 
         # TODO: Need to wrap the connection in a context so it can be closed automatically
         # Lookup the username in the database.
-        con = psycopg2.connect(**dbauthinfo)
-        cur = con.cursor() 
+        #- con = psycopg2.connect(**dbauthinfo)
+        #- cur = con.cursor() 
+        
+        return check_password_hash(get_hash_info(cur, username), password)
+        #- result = get_user_password_hash(cur, username)
 
-        result = get_user_password_hash(cur, username)
+        # cur.close()
+        # con.close()
 
-        cur.close()
-        con.close()
-
+        """-
         if (result != None):
             return hash_match(result, password)
         else:
             return False
+        """
 
     except:
         logger.error('authenticate exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return False
 
-def create_new_session(username):
+def create_new_session(username, cur):
 
     #TODO - hydrate the session based uipon the users database profile.
     # ct_offset is the number of hours that the user wants their time data to be offset from central time.
@@ -143,9 +155,30 @@ def create_new_session(username):
     # to slide all display times from the central time (i.e. server time) to the users time.  Make server time
     # a configuration setting.
     #
+
     s = {'user_name': username, 'user_id':'sdfds', 'org_id':'dac952cd89684c26a508813861015995', 
          'device_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99',
          'ct_offset':0}
+
+    if username == 'peter': 
+        return s
+
+    sql = """select person.nick_name, person.guid, person.django_username, participant.organization_guid from person inner join
+             participant on person.guid = participant.guid where person.django_username = %s;"""
+
+    cur.execute(sql, (username,))
+
+    rc = cur.rowcount
+    # TEST HOOK rc = 2
+    assert(rc == 1), 'create_new_sesson: django_username {} has {} associated person records.  It should only have 1.'\
+                     .format(username, rc) 
+
+    person_info = cur.fetchone()
+    s['user_id'] = person_info[1]
+    s['nick_name'] = person_info[0]
+    s['org_id'] = person_info[3]
+
+    logger.debug('user profile: {}'.format(s))
 
     return s
 
