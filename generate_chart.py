@@ -48,18 +48,19 @@ def apply_unit_conversion(val_tree, chart_info):
 #order descending so when limit the results will get the latest at the top
 
 from io import BytesIO
-from config.config import chart_list, couchdb_database_name_b64_cipher, couchdb_location_url, couchdb_password_b64_cipher, couchdb_username_b64_cipher
+#- from config.config import chart_list, couchdb_database_name_b64_cipher, couchdb_location_url, couchdb_password_b64_cipher, couchdb_username_b64_cipher
+from config.config import couchdb_location_url, couchdb_password_b64_cipher, couchdb_username_b64_cipher
 from nacl_fop import decrypt
 import re
 
 # TODO: implement the ct_offset parameter. It should shift the time ct_offset hours from the 
 #       system time. The system time is assumed to be central time hence the name ct_offset.
 #
-def generate_chart(data_type, ct_offset):
+def generate_chart(data_type, chart_config, ct_offset):
 
     # first find the chart type that the user is requesting
     chart_info = None
-    for chart in chart_list:
+    for chart in chart_config['chart_list']:
         if chart['vue_name'] == data_type:
             chart_info = chart
             break
@@ -69,7 +70,8 @@ def generate_chart(data_type, ct_offset):
         return {'bytes':None}
 
     # Get the data from couchdb
-    couch_query = couchdb_location_url + decrypt(couchdb_database_name_b64_cipher).decode('ascii') + '/'\
+    #- couch_query = couchdb_location_url + decrypt(couchdb_database_name_b64_cipher).decode('ascii') + '/'\
+    couch_query = couchdb_location_url + chart_config['couchdb_db_name'] + '/'\
                      + '_design/doc/_view/attribute_value?'\
                      + 'startkey=["{0}","{1}",{2}]&endkey=["{0}"]&descending=true&limit=60'.format(
                      chart_info['attribute'], chart_info['couchdb_name'], '{}')

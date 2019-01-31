@@ -13,8 +13,6 @@ from jose import jws
 
 from nacl_fop import decrypt
 
-#- from config.config import device_id, hmac_secret_key, fop_jose_id
-#- from config.private_key import hmac_secret_key, fop_jose_id, fopdcw_jose_id
 from config.private_key import hmac_secret_key, fop_jose_id, fopdcw_jose_id
 from config.config import jws_secret_key_b64_enc
 

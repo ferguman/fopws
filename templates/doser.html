@@ -36,29 +36,17 @@ div.tab button.active {
     border-top: none;
 }
 </style>
- <title>Farm Device Dashboard</title>
+<head>
+ <title>Farm Device Doser</title>
 </head>
 <body onload="openTab(event, 'Charts');">
-<div id="fopdcw">
-<p>
- (% with messages = get_flashed_messages() %)
-  (% if messages %)
-    <ul class=flashes>
-    (% for message in messages %)
-      <li>(( message ))</li>
-    (% endfor %)
-    </ul>
-  (% endif %)
-(% endwith %) 
-</p>
-
+<div id="doser">
 
 <div class="tab">
-  <select class="tablinks" v-model="selected_device_value">
-    <option v-for="device in devices" v-bind:value="device.value">{{ device.name }}</option>
-  </select> 
   <button class="tablinks" v-on:click="open_charts_tab">Charts</button>
-  <button class="tablinks" v-on:click="open_image_tab">Camera</button>
+  <button class="tablinks" v-on:click="open_ph_tab">pH</button>
+  <button class="tablinks" v-on:click="open_nutrient_tab">Nutrients</button>
+  <button class="tablinks" v-on:click="open_level_tab">Reserviorr Level</button>
   <button class="tablinks" onclick="openTab(event, 'About')">About</button>
   <button class="tablinks" onclick='window.location="/logout"'>Logout</button>
 </div>
@@ -75,23 +63,20 @@ div.tab button.active {
 
 </div>
 
-<div id="Camera" class="tabcontent">
-  <h3>Camera</h3>
-      <p>Images are typically updated once per day. Click 
-      <button v-on:click="update_image">update</button> to refresh the image.
-      </p>
-      <img v-bind:src="image" alt="Latest image" style="width:720px;">
+<div id="ph" class="tabcontent">
+    <p>Current pH: {{ph}}</p>
+</div>
+
+<div id="ph" class="tabcontent">
+    <p>Current pH: {{ph}}</p>
+    <p>Auto Dosing: 
 </div>
 
 <div id="About" class="tabcontent">
   <h3>About the Farm Operation Platform</h3>
-  <p>This site provides cloud connectivity to grow devices. It is currently compatible with the MVP and the OpenAg Food Computer Versions 1 and 2, as well as custom devices. For more information about how you can leverage this platform please visit <a target="_blank" href="https://www.urbanspacefarms.com">Urban Space Farms, LLC</a> and submit our contact form.</p>
+  <p>This site provides dashboards for cloud connected farms. For more information about how you can leverage this platform please visit <a target="_blank" href="https://www.urbanspacefarms.com">Urban Space Farms, LLC</a> and submit our contact form.</p>
 
   <p>The code for this website is sourced on <a target="_blank" href="https://github.com/ferguman/fopdw">Github</a></p> 
-
-  <h3>About the MVP</h3>
-  <p>The MVP (Minimal Viable Product) is a low cost, hydroponic growth chamber; designed as a simplified version of the <a target="_blank" href="https://www.media.mit.edu/groups/open-agriculture-openag/overview">MIT OpenAg Personal Food Computer</a>.  While this is a working hydroponic environment, the focus in on collecting research data.  This is an open source project based around a Raspberry Pi 'brain' and Python code, with a CouchDB repository.</p>
-<p>The MVP Code is sourced on <a target="_blank" href="https://github.com/futureag/mvp">Github</a></p>
 </div>
 
 </div>
@@ -101,26 +86,20 @@ div.tab button.active {
 <script>
 
 var app = new Vue({
-    el: '#fopdcw',
+    el: '#doser',
     data: {
-        selected_device_value: '(( selected_device['id'] ))',
-        devices: [
-(% for device in devices: %)
-            { name: '(( device['name'].replace("'", "\'") ))', value: '(( device['id'] ))' },
-(% endfor %)
-        ],
-        image: "/image.jpg?" + new Date().getTime(),
 (% for chart in chart_list: %)
         ((chart['vue_name'])): "/chart/((chart['vue_name']))?" + new Date().getTime(),
 (% endfor %)
+    ph: 6.5
     },
     methods: {
 	open_charts_tab: function(event) {
 		openTab(event, 'Charts');
 		this.update_charts();
 	},
-	open_image_tab: function(event) {
-		openTab(event, 'Camera');
+	open_ph_tab: function(event) {
+		openTab(event, 'ph');
 		this.update_image();
 	},
         update_charts: function() {
