@@ -4,6 +4,8 @@
 *.svg
 __pycache__/
 venv/
+fopdw/
 static/
-config/
+config/config.py
+config/private_key.py
 !static/s3_error.jpg
