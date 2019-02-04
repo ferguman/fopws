@@ -5,6 +5,9 @@
 __pycache__/
 venv/
 fopdw/
+log/*.*
+log/*
+!log/.gitkeep
 static/
 config/config.py
 config/private_key.py

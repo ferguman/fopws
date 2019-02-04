@@ -25,7 +25,19 @@
 flask_app_secret_key_b64_cipher = [FLASK_SECRET_KEY] 
 
 # Postgres database configuration
-# Note that password is the encrypted b64 encoded cipher text generated from the password.
+#
+# HOST value is set to a value (e.g. 'localhost') that identifies the host system for the db server. 
+# 
+# Note: To change a Postgres user's password run the following command from within the psql 
+#       application:
+#       ALTER USER user_name WITH PASSWORD 'new_password';
+# 
+# Note that password value is expected to be encrypted b64 encoded cipher text.
+# To encrypt and b64 encode the password perform the following from within the Python interetter:
+#    from nacl_fop import encrpty
+#    encrypt([put the password here as a binary string])
+#    Use the value generated above as the value of the 'password' parameter in the dbconfig below.
+#
 dbconfig = {'host':[HOST],
             'user':[DB_USER],
             'password':[DB_PASSWORD],
@@ -39,6 +51,14 @@ couchdb_location_url = ''
 couchdb_username_b64_cipher = ''
 couchdb_password_b64_cipher = ''
 
+# fopd signs each JWT claim with a secret key that is shared with the JWT service.  Obtain the
+# value from the JWT service to which this installation of fopdw will connect to. Then put
+# the b64 encoded cipher text for the secret key as the value of jws_secret_key_b64_enc.
+#
+# Note: To encrypt and b64 encode the secret key perform the following from within the Python interetter:
+#    from nacl_fop import encrpty
+#    encrypt([put the secret key here as a binary string])
+#    Use the value generated above as the value of jws_secret_key_b64_enc below.
 jws_secret_key_b64_enc = ''
 
 # Misceallaneous

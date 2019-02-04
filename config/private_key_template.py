@@ -17,9 +17,21 @@
 nsk_b64 = [PASTE NEW VALUE HERE] 
 
 # TODO - Move these things to the config.py file
-#
 # ########### JWT Settings ##############
+# fop_jose_id is a UUID that is used to set the Audience value of JWT requests originating
+# from fopdw. The cloud provider for JWT requests (i.e. image uploads) must be configured 
+# to recognize this value.
 #
 fop_jose_id = ''
+#
+# fopdcw_jose_id is a UUID that is used by fopdw to identify itself in the Issuer parameter 
+# of JWT requests.  The JWT endpoint that fopdw uses must be configured to recognize this
+# value.
+# You can generate a random value by performing the following commands in Python shell:
+#   import uuid
+#   uuid4()
+#
 fopdcw_jose_id = ''
-hmac_secret_key = ''
+#
+#
+#- hmac_secret_key = ''
