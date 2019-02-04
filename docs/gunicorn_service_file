@@ -1,0 +1,14 @@
+[Unit]
+Description=Gunicorn instance to serve fopdcw 
+After=network.target
+
+[Service]
+User=ferguman
+Group=www-data
+
+WorkingDirectory=[-- put the path to the fopdw working directory here --]
+Environment="PATH=[-- put the path to the Python environment here (e.g. /home/jill/fopdw/fopdw/bin) --]"
+ExecStart=[-- put the path to the Gunicorn runtime here (e.g /home/jill/fopdw/venv/bin/gunicorn --] --workers 3 --bind unix:fopdcw.sock -m 007 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
