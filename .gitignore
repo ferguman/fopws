@@ -4,11 +4,12 @@
 *.svg
 __pycache__/
 venv/
+dist/
 fopdw/
 log/*.*
 log/*
 !log/.gitkeep
 static/
+!static/s3_error.jpg
 config/config.py
 config/private_key.py
-!static/s3_error.jpg

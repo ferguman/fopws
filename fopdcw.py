@@ -4,6 +4,8 @@ from sys import exc_info
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session
+
+from flask_cors import CORS
 import requests
 import psycopg2
 
@@ -39,6 +41,15 @@ app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 # flask.app logger.
 logger = get_top_level_logger()
 
+# TODO: must come up with a way to restrict api access on production to same origin.
+from logging import getLogger, DEBUG
+from logger import get_the_fopdcw_log_handler
+
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+getLogger('flask_cors').level = DEBUG
+getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
+
 # Decorate URL route functions with this function in order to restrict access
 # to logged on users.
 def enforce_login(func):
@@ -50,7 +61,11 @@ def enforce_login(func):
             return func(*args, **kwargs)		
         else:
             logger.warning('Unauthorized URL access attempt. Route function name: {}'.format(func.__name__))
-            return 'Please login' 
+            r = Response('{"auth_failure": true}')
+            #TODO Need to make this a installation variable so that you can turn it off on production.
+            r.headers['Access-Control-Allow-Origin'] = '*'
+            return r
+            #- return 'Please login' 
 
     return wrapper
 
@@ -59,6 +74,29 @@ def enforce_login(func):
 def get_login_form():
      # show the login form 
      return render_template('login.html', error=None)
+
+@app.route("/api/session")
+@enforce_login
+def get_session():
+    
+    r = Response('{"sites":["greencubator", "maplewood", "home lab"]}')
+    
+    """-
+    #TODO Need to make this a installation variable so that you can turn it off on production.
+    r.headers['Access-Control-Allow-Origin'] = '*'
+    """
+    
+    return r
+
+
+@app.route("/api/login", methods=['POST'])
+def process_api_login():
+
+
+
+    r = Response('{"sites":["greencubator", "maplewood", "home lab"]}')
+
+    return r
 
 @app.route("/login", methods=['POST'])
 def process_login():
@@ -81,7 +119,6 @@ def process_login():
          session['user'] = None
          flash('system error F_PL')
          return render_template('login.html')
-
 
 @app.route('/logout', methods=['GET'])
 def logout():
