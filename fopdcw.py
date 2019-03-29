@@ -1,10 +1,10 @@
 from functools import wraps
 from io import BytesIO
+import json
 from sys import exc_info
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session
-
 from flask_cors import CORS
 import requests
 import psycopg2
@@ -34,8 +34,8 @@ class FopwFlask(Flask):
 ))
 
 app = FopwFlask(__name__)
-
 app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
+
 
 # This function has the side effect of injecting the fopdcw log handler into the 
 # flask.app logger.
@@ -45,10 +45,11 @@ logger = get_top_level_logger()
 from logging import getLogger, DEBUG
 from logger import get_the_fopdcw_log_handler
 
-cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
-
 getLogger('flask_cors').level = DEBUG
 getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
+
+#TODO: Need a may to remove this cors stuff for the production server.
+cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
 
 # Decorate URL route functions with this function in order to restrict access
 # to logged on users.
@@ -57,6 +58,7 @@ def enforce_login(func):
     @wraps(func)
 
     def wrapper(*args, **kwargs):
+        
         if 'user' in session and session['user'] != None:
             return func(*args, **kwargs)		
         else:
@@ -69,35 +71,79 @@ def enforce_login(func):
 
     return wrapper
 
+# The following two routes (login and logout) should be the only ones that are exposed
+# to sessionless traffic.
+#
+@app.route("/api/login", methods=['POST'])
+def process_api_login():
+
+    try:
+
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+            
+            creds = request.get_json(force=True)
+
+            if authenticate(creds['username'][0:150], creds['password'][0:150], cur):
+                logger.info('authenticate succesful')
+                session['user'] = create_new_session(creds['username'][0:150], cur)
+                return json.dumps({'logged_in':True, 'organizations':session['user']['organizations']})
+            else:
+                logger.warning('authentication failed.')
+                session['user'] = None
+                return json.dumps({'logged_in':False, 'organizations':[{}]})
+                #- return '{"logged_in":false}'
+    except Exception as err:
+         logger.error('process_api_login exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
+         session['user'] = None
+         return json.dumps({'logged_in':False, 'organizations':[{}]})
+         #- return '{"logged_in":false}'
+
+@app.route("/api/logout", methods=['POST'])
+def process_logout():
+
+    try:
+        session['user'] = None
+        return '{"logged_in":false}'
+    except Exception as err:
+        logger.error('process_api_logout exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
+        return '{"logged_in":"?"}'
+
+# All routes below this line should apply the @enforce_login decorater in
+# order to restrict access to logged in users.
+
+@app.route('/api/get_crops', methods=['GET'])
+@enforce_login
+def get_crops():
+
+    if 'user' in session:
+        logger.info('found user session')
+    else:
+        logger.info('no user session found')
+
+    try:
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select 0 grow_batch_id, start_date, 'germination' from 
+                     germination"""
+
+            cur.execute(sql)
+
+            return json.dumps({'server error':False, 'rows':cur.rowcount})
+
+    except:
+        logger.error('get_crops exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return json.dumps({'server error':True})
+
+#- TODO: Delete all the routes beneath this line once the system is converted to be
+#        entirely API driven.
+#
 @app.route("/login", methods=['GET'])
 @app.route("/")
 def get_login_form():
      # show the login form 
      return render_template('login.html', error=None)
 
-@app.route("/api/session")
-@enforce_login
-def get_session():
-    
-    r = Response('{"sites":["greencubator", "maplewood", "home lab"]}')
-    
-    """-
-    #TODO Need to make this a installation variable so that you can turn it off on production.
-    r.headers['Access-Control-Allow-Origin'] = '*'
-    """
-    
-    return r
-
-
-@app.route("/api/login", methods=['POST'])
-def process_api_login():
-
-
-
-    r = Response('{"sites":["greencubator", "maplewood", "home lab"]}')
-
-    return r
-
+     
 @app.route("/login", methods=['POST'])
 def process_login():
 
@@ -183,7 +229,7 @@ def authenticate(username, password, cur):
     # Is the user in the db?
     try:
         assert ( username != None), 'empty username'
-        assert (len(username) > 1 and len(username) <= 150), 'username must be 1 to 150 characters long'
+        assert (len(username) > 4 and len(username) <= 150), 'username must be 5 to 150 characters long'
         logger.info('login request from {}'.format(username))
 
         return check_password_hash(get_hash_info(cur, username), password)
@@ -203,11 +249,15 @@ def create_new_session(username, cur):
     # a configuration setting.
     #
 
-    s = {'user_name': username, 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'ct_offset':0}
+    #- s = {'user_name': username, 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'ct_offset':0}
+    s = {'user_name': username, 'ct_offset':0}
 
-    sql = """select person.nick_name, person.guid, person.django_username, participant.organization_guid
-             from person inner join participant on person.guid = participant.guid 
-             where person.django_username = %s;"""
+    #- sql = """select person.nick_name, person.guid, person.django_username, participant.organization_guid
+    #-         from person inner join participant on person.guid = participant.guid 
+    #-         where person.django_username = %s;"""
+
+    sql = """select person.nick_name, person.guid, person.django_username 
+             from person where person.django_username = %s;"""
 
     cur.execute(sql, (username,))
 
@@ -217,14 +267,27 @@ def create_new_session(username, cur):
                      .format(username, rc) 
 
     person_info = cur.fetchone()
-    s['user_id'] = person_info[1]
+    s['user_guid'] = person_info[1]
     s['nick_name'] = person_info[0]
-    s['org_id'] = person_info[3]
+    #- s['org_id'] = person_info[3]
 
+    # Now get the user's organizations
+    sql = """select participant.organization_guid, organization.local_name from
+             participant inner join organization on
+             participant.organization_guid = organization.guid where
+             participant.guid = %s"""
 
+    cur.execute(sql, (s['user_guid'],))
+
+    if cur.rowcount > 0:
+        s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+    else:
+        s['organization'] = [{}]
+
+    """-
     # Now find the top level devices that exist within this person's organization and sub-organizations. 
     # A top level device is defined as a device with no parent devices.
-    sql = """select device.local_name, device.guid, device.chart_config from device inner join participant on device.guid = participant.guid
+    sql = ""select device.local_name, device.guid, device.chart_config from device inner join participant on device.guid = participant.guid
              where device.parent_guid is null and 
              participant.organization_guid in 
              (with recursive org_root (organization_guid) 
@@ -232,7 +295,7 @@ def create_new_session(username, cur):
              Union All
              select child.guid from org_root parent, organization child
              where child.parent_org_id = parent.organization_guid)
-             select distinct organization_guid from org_root);"""
+             select distinct organization_guid from org_root);""
  
     cur.execute(sql, (s['org_id'],))
     rc = cur.rowcount
@@ -246,7 +309,7 @@ def create_new_session(username, cur):
     s['chart_config'] = s['devices'][0]['chart_config']
 
     # Get the list of cameras for the selected device
-    sql = """select device.local_name, device.guid
+    sql = ""select device.local_name, device.guid
              from device inner join device_type on device.device_type_id = device_type.id
              where device_type.local_name = 'camera'  and 
              device.guid in 
@@ -254,7 +317,7 @@ def create_new_session(username, cur):
              as (select root.guid from device root where guid = %s
              Union All select child.guid from device_root parent, device child 
              where child.parent_guid = parent.device_guid)
-             select distinct device_guid from device_root);"""
+             select distinct device_guid from device_root);""
 
     # TODO: must select camera info for all devices. For now select it for the 1st device.
     cur.execute(sql, (s['devices'][0]['id'],))
@@ -265,8 +328,9 @@ def create_new_session(username, cur):
         s['camera_id'] = camera_info[1]
     else:
         s['camera_id'] = None
+    """
 
-    logger.debug('user profile: {}'.format(s))
+    logger.debug('session: {}'.format(s))
 
     return s
 
