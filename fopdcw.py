@@ -41,7 +41,6 @@ app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 # flask.app logger.
 logger = get_top_level_logger()
 
-# TODO: must come up with a way to restrict api access on production to same origin.
 from logging import getLogger, DEBUG
 from logger import get_the_fopdcw_log_handler
 
@@ -102,7 +101,8 @@ def process_api_login():
 def process_logout():
 
     try:
-        session['user'] = None
+        session.pop('user', None)
+        #- session['user'] = None
         return '{"logged_in":false}'
     except Exception as err:
         logger.error('process_api_logout exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
