@@ -34,6 +34,12 @@ class FopwFlask(Flask):
 ))
 
 app = FopwFlask(__name__)
+
+# TODO - Consider generating a new secret key everytime Flask is restarted. Flask
+#        stores session data in the client on an enrypted cookie.  If you set a
+#        new secret key everytime Flask is restarted then pre-restart sessions
+#        become invalid after the restart.
+#
 app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 
 
@@ -41,10 +47,10 @@ app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 # flask.app logger.
 logger = get_top_level_logger()
 
-from logging import getLogger, DEBUG
+from logging import getLogger, DEBUG, INFO
 from logger import get_the_fopdcw_log_handler
 
-getLogger('flask_cors').level = DEBUG
+getLogger('flask_cors').level =  INFO
 getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
 
 #TODO: Need a may to remove this cors stuff for the production server.
@@ -101,24 +107,31 @@ def process_api_login():
 def process_logout():
 
     try:
+        logger.info('{}: api/logout'.format(session['user']['nick_name']))
         session.pop('user', None)
-        #- session['user'] = None
-        return '{"logged_in":false}'
+        return json.dumps({'r':True, 'logged_in':False})
     except Exception as err:
-        logger.error('process_api_logout exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
-        return '{"logged_in":"?"}'
+        logger.error('api/logout exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
+        return json.dumps({'r':False, 'logged_in':None})
 
 # All routes below this line should apply the @enforce_login decorater in
 # order to restrict access to logged in users.
 
+@app.route('/api/extend_session', methods=['GET'])
+@enforce_login
+def extend_session():
+    """ Clients are expected to call this endpoint when they want to keep their session alive. """
+
+    if 'user' in session:
+        logger.info('{}: api/extend_session'.format(session['user']['nick_name']))
+        return json.dumps({'r':True, 'logged_in':True})
+    else:
+        logger.error('api/extend_session: No user session.')
+        return json.dumps({'r':False, 'logged_in':None})
+
 @app.route('/api/get_crops', methods=['GET'])
 @enforce_login
 def get_crops():
-
-    if 'user' in session:
-        logger.info('found user session')
-    else:
-        logger.info('no user session found')
 
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
@@ -134,6 +147,30 @@ def get_crops():
         logger.error('get_crops exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'server error':True})
 
+
+@app.route('/api/get_devices', methods=['GET'])
+@enforce_login
+def get_devices():
+
+    try:
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            #TODO - retreive the user's devices from the database and return as a list.
+
+            devices = [{'name':'sfc1', 'type':'fc1'}]
+
+            return json.dumps({'r':True, 'devices':devices})
+
+    except:
+        logger.error('get_devices exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return json.dumps({'r':False})
+
+
+
+
+
+
+#ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZk
 #- TODO: Delete all the routes beneath this line once the system is converted to be
 #        entirely API driven.
 #
