@@ -11,5 +11,6 @@ log/*
 !log/.gitkeep
 static/
 !static/s3_error.jpg
+!static/graph_error.jpg
 config/config.py
 config/private_key.py

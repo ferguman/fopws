@@ -117,6 +117,38 @@ def process_logout():
 # All routes below this line should apply the @enforce_login decorater in
 # order to restrict access to logged in users.
 
+@app.route('/api/chart/<data_type>/<grow_system_guid>')
+@enforce_login
+def chart(data_type, grow_system_guid):
+
+    #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
+    logger.info('{}: api/chart/{}/{}'.format(session['user']['nick_name'], data_type, grow_system_guid))
+  
+    try:
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            # Use the grow_system_guid to lookup the chart configuration.
+            sql = """select device.chart_config from grow_system_devices inner join device on
+                     grow_system_devices.device_uuid = device.guid
+                     where grow_system_devices.grow_system_uuid = %s;"""
+
+            cur.execute(sql, (grow_system_guid,))
+            rc = cur.rowcount
+
+            assert(rc > 0), 'No chart configurations are associated with grow system: {}'.format(grow_system_guid)
+
+            result = generate_chart(data_type, cur.fetchone()[0], session['user']['ct_offset'])
+            
+            if result['bytes'] != None:
+                return Response(result['bytes'], mimetype='image/svg+xml')
+            else:
+                return send_from_directory('static', 'graph_error.jpg', mimetype='image/png')
+
+    except:
+        logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return send_from_directory('static', 'graph_error.jpg', mimetype='image/png')
+
+
 @app.route('/api/extend_session', methods=['GET'])
 @enforce_login
 def extend_session():
@@ -152,12 +184,24 @@ def get_crops():
 @enforce_login
 def get_devices():
 
+    logger.info('{}: api/get_devices'.format(session['user']['nick_name']))
+
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
             #TODO - retreive the user's devices from the database and return as a list.
+            sql = """select uuid, local_name, grow_system_type from grow_system where
+                     grow_system.organization_uuid = %s"""
+                     
+            cur.execute(sql, (session['user']['organizations'][0]['guid'],))
 
-            devices = [{'name':'sfc1', 'type':'fc1'}]
+            if cur.rowcount > 0:
+                devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2]} for grow_system in cur.fetchall()]
+                #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+            else:
+                devices = [{}]
+
+            #- devices = [{'name':'sfc1', 'type':'fc1'}]
 
             return json.dumps({'r':True, 'devices':devices})
 
@@ -171,8 +215,8 @@ def get_devices():
 
 
 #ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZk
-#- TODO: Delete all the routes beneath this line once the system is converted to be
-#        entirely API driven.
+#- TODO: Review all the routes beneath this line once the system is converted to be
+#        entirely API driven and delete unused ones.
 #
 @app.route("/login", methods=['GET'])
 @app.route("/")
@@ -227,22 +271,6 @@ def image():
             return send_from_directory(os.path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
     except:
         logger.error('in /image.jpg route: {}, {}'.format(exc_info()[0], exc_info()[1]))
-        return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
-
-
-@app.route('/chart/<data_type>')
-@enforce_login
-def chart(data_type):
-
-    logger.info('chart request for {}'.format(data_type))
-
-    result = generate_chart(data_type, session['user']['chart_config'], 
-                            session['user']['ct_offset'])
-    
-    if result['bytes'] != None:
-        return Response(result['bytes'], mimetype='image/svg+xml')
-    else:
-        #TODO: Need to put in a proper error message here.
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
 
