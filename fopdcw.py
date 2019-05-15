@@ -1,6 +1,7 @@
 from functools import wraps
 from io import BytesIO
 import json
+from os import path 
 from sys import exc_info
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
@@ -54,7 +55,8 @@ getLogger('flask_cors').level =  INFO
 getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
 
 #TODO: Need a may to remove this cors stuff for the production server.
-cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
+# this works for development, i.e serving the web client from my laptop: cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
+cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost', 'http://fop3.urbanspacefarms.com:5000'])
 
 # Decorate URL route functions with this function in order to restrict access
 # to logged on users.
@@ -117,9 +119,102 @@ def process_logout():
 # All routes below this line should apply the @enforce_login decorater in
 # order to restrict access to logged in users.
 
+@app.route('/api/get_chart_list/<system_uuid>', methods=['GET'])
+@enforce_login
+def get_chart_list(system_uuid):
+
+    #TODO - verify that the user has the privliges to see charts for the 
+    #       grow system identified by <system_uuid>
+
+    #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
+    logger.info('{}: api/get_chart_list/{}'.format(session['user']['nick_name'], system_uuid))
+  
+    try:
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select chart_config from grow_system inner join grow_system_devices on
+                     grow_system.uuid = grow_system_devices.grow_system_uuid inner join 
+                     device on device.guid = grow_system_devices.device_uuid where
+                     uuid = %s;"""
+
+            cur.execute(sql, (system_uuid,))
+
+            assert(cur.rowcount == 1), 'No or more than one device found. Only one device was expected.'
+
+            return json.dumps(
+                {'r':True, 
+                    'chart_list':[{'rel_url':'/chart/{}/{}'.format(cl['vue_name'], system_uuid)}
+                                  for cl in cur.fetchone()[0]['chart_list']]
+                })
+    except:
+        logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return json.dumps({'r':False, 'chart_list':[{}]})
+
+    """-
+                    'chart_list':[{'type':cl['vue_name'], 'rel_url':'/chart/{}/{}'.format(cl['vue_name'], system_uuid)}
+                                  for cl in cur.fetchone()[0]['chart_list']]
+    return json.dumps({'r':True, 'chart_list':[
+        {'type':'air_temperature', 'rel_url':'/chart/air_temperature/{}'.format(system_uuid)},
+        {'type':'air_humidity', 'rel_url':'/chart/air_humidity/{}'.format(system_uuid)}
+        ] })
+    """
+
+@app.route('/api/get_zip/<images_per_day>/<start_date>/<end_date>')
+@enforce_login
+def get_zip(images_per_day, start_date, end_date):
+
+    #TODO - verify that the user has the privliges to see the contents of the zip file. 
+
+    #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
+    logger.info('{}: api/get_zip/{}/{}/{}'.format(session['user']['nick_name'], images_per_day, start_date, end_date))
+   
+
+    #TODO - Need to:
+    #       get teh list of images between start date and end date
+    #       seive the list to contain no more thjan images_per_day
+    #       retrieve the images one by one from amazon S3 and add them to zip file as you go
+    #       retrunt he zip file
+
+    try:
+
+        # Get the camera id
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select camera_uuid from grow_system where 
+                     uuid = %s"""
+
+            cur.execute(sql, ('21cf6101-c4dc-41f3-9e67-2741e78400e2',))
+
+            camera_uuid = cur.fetchone()[0]
+
+        #TODO - Need to make sure the user has the permission to view this camera.
+        #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+        logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
+        result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
+
+        if result['bytes'] != None:
+            return send_file(BytesIO(result['bytes']), mimetype='image/svg+xml',
+                             as_attachment=True, attachment_filename='foobar')
+        else:
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+
+    except:
+        logger.error('in /image.jpg route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+
+    #+ return send_file(BytesIO(result['bytes'], mimetype='image/svg+xml'))
+
+
+    #- return send_from_directory('static', 'graph_error.jpg', as_attachment=True)
+    #- Content-Disposition: attachment; filename="filename.jpg" filename*="filename.jpg"
+
+
 @app.route('/api/chart/<data_type>/<grow_system_guid>')
 @enforce_login
 def chart(data_type, grow_system_guid):
+
+    #TODO - verify that the user has the privliges to see charts for the 
+    #       grow system identified by <grow_system_guid>
 
     #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
     logger.info('{}: api/chart/{}/{}'.format(session['user']['nick_name'], data_type, grow_system_guid))
@@ -161,6 +256,43 @@ def extend_session():
         logger.error('api/extend_session: No user session.')
         return json.dumps({'r':False, 'logged_in':None})
 
+
+@app.route('/api/image/<system_uuid>', methods=['GET'])
+@enforce_login
+def image(system_uuid):
+
+    #TODO - verify that the user has the privliges to see the image. 
+
+    #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
+    logger.info('{}: api/image/{}'.format(session['user']['nick_name'], system_uuid))
+
+    try:
+
+        # Get the camera id
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select camera_uuid from grow_system where 
+                     uuid = %s"""
+
+            cur.execute(sql, (system_uuid,))
+
+            camera_uuid = cur.fetchone()[0]
+
+        #TODO - Need to make sure the user has the permission to view this camera.
+        #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+        logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
+        result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
+
+        if result['bytes'] != None:
+            return Response(result['bytes'], mimetype='image/jpg')
+        else:
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+
+    except:
+        logger.error('in /image.jpg route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+
+
 @app.route('/api/get_crops', methods=['GET'])
 @enforce_login
 def get_crops():
@@ -189,19 +321,20 @@ def get_devices():
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            #TODO - retreive the user's devices from the database and return as a list.
-            sql = """select uuid, local_name, grow_system_type from grow_system where
-                     grow_system.organization_uuid = %s"""
+            #- sql = """select uuid, local_name, grow_system_type from grow_system where
+            #-         grow_system.organization_uuid = %s"""
                      
+            sql = """select uuid, local_name, grow_system_type, access_type from 
+                     grow_system inner join grow_system_access_list on 
+                     grow_system.uuid = grow_system_access_list.grow_system_uuid where
+                     grow_system_access_list.organization_uuid = %s"""
+
             cur.execute(sql, (session['user']['organizations'][0]['guid'],))
 
             if cur.rowcount > 0:
-                devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2]} for grow_system in cur.fetchall()]
-                #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+                devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2], 'access_type':grow_system[3]} for grow_system in cur.fetchall()]
             else:
                 devices = [{}]
-
-            #- devices = [{'name':'sfc1', 'type':'fc1'}]
 
             return json.dumps({'r':True, 'devices':devices})
 
@@ -258,20 +391,6 @@ def favicon():
     return send_from_directory('/static', 'favicon.ico', mimetype='image/png')
 
 
-@app.route('/image.jpg')
-@enforce_login
-def image():
-
-    try:
-        result = get_image_file(session['user']['org_id'], session['user']['camera_id'])
-
-        if result['bytes'] != None:
-            return Response(result['bytes'], mimetype='image/jpg')
-        else:
-            return send_from_directory(os.path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
-    except:
-        logger.error('in /image.jpg route: {}, {}'.format(exc_info()[0], exc_info()[1]))
-        return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
 
 @app.route('/doser')
@@ -294,7 +413,7 @@ def authenticate(username, password, cur):
     # Is the user in the db?
     try:
         assert ( username != None), 'empty username'
-        assert (len(username) > 4 and len(username) <= 150), 'username must be 5 to 150 characters long'
+        assert (len(username) > 3 and len(username) <= 150), 'username must be 4 to 150 characters long'
         logger.info('login request from {}'.format(username))
 
         return check_password_hash(get_hash_info(cur, username), password)
@@ -400,7 +519,6 @@ def create_new_session(username, cur):
     return s
 
 def get_image_file(org_id, camera_id):
-
     # get the image from the image upload server
     
     # create a JWT for authenticating fopdcw to fop
