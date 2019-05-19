@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 from os import path 
 from sys import exc_info
+from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session
@@ -16,6 +17,8 @@ from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
 from nacl_fop import decrypt, decrypt_dict_vals
+from python.image import get_image_file_v2, get_newest_image_uuid
+from python.permissions import has_permission 
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
@@ -159,9 +162,9 @@ def get_chart_list(system_uuid):
         ] })
     """
 
-@app.route('/api/get_zip/<images_per_day>/<start_date>/<end_date>')
+@app.route('/api/get_zip/<system_uuid>/<images_per_day>/<start_date>/<end_date>')
 @enforce_login
-def get_zip(images_per_day, start_date, end_date):
+def get_zip(system_uuid, images_per_day, start_date, end_date):
 
     #TODO - verify that the user has the privliges to see the contents of the zip file. 
 
@@ -193,13 +196,24 @@ def get_zip(images_per_day, start_date, end_date):
         result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
 
         if result['bytes'] != None:
-            return send_file(BytesIO(result['bytes']), mimetype='image/svg+xml',
-                             as_attachment=True, attachment_filename='foobar')
+
+            zip_archive = BytesIO()
+            with ZipFile(zip_archive, mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
+            #- with ZipFile('test.zip', mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
+                zip_file.writestr('foobar.jpg', result['bytes'])
+
+            #- return Response(zip_archive.getvalue(), mimetype='application/zip')
+            #- return send_file('test.zip', mimetype='application/zip', as_attachment=True, attachment_filename='image_archive.zip')
+            zip_archive.seek(0)
+            logger.info("length of archive: {}".format(len(zip_archive.getvalue())))
+            return send_file(zip_archive, mimetype='application/zip', as_attachment=True, attachment_filename='image_archive.zip')
+            #- return Response(zip_archive.getvalue(), mimetype='application/zip')
+
         else:
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
     except:
-        logger.error('in /image.jpg route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        logger.error('in /api/get_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
     #+ return send_file(BytesIO(result['bytes'], mimetype='image/svg+xml'))
@@ -278,14 +292,22 @@ def image(system_uuid):
 
             camera_uuid = cur.fetchone()[0]
 
-        #TODO - Need to make sure the user has the permission to view this camera.
-        #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
-        logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
-        result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
+        #TODO: finish the has_permissions function
+        if not has_permission(session['user']['user_guid'], camera_uuid, 'view'):
+            logger.warning('user_uuid {}: get image permission failure for org {} and camera {}'.format(
+               session['user']['user_guid'], session['user']['organizations'][0]['guid'], camera_uuid))
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
-        if result['bytes'] != None:
-            return Response(result['bytes'], mimetype='image/jpg')
+        logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
+        #- result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
+        result = get_image_file_v2(get_newest_image_uuid(camera_uuid))
+
+        #- if result['bytes'] != None:
+        if result['image_blob'] != None:
+            #- return Response(result['bytes'], mimetype='image/jpg')
+            return Response(result['image_blob'], mimetype='image/jpg')
         else:
+            logger.error('get image failure {}'.format(result['msg']))
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
     except:
@@ -519,7 +541,8 @@ def create_new_session(username, cur):
     return s
 
 def get_image_file(org_id, camera_id):
-    # get the image from the image upload server
+    # get the image via a JWT autenticated GET request to the
+    # from the image download/upload server
     
     # create a JWT for authenticating fopdcw to fop
     jwt = make_image_request_jwt(org_id, camera_id)
