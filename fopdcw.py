@@ -17,7 +17,8 @@ from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
 from nacl_fop import decrypt, decrypt_dict_vals
-from python.image import get_image_file_v2, get_newest_image_uuid
+from python.boto3_fop import get_s3_image
+from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission 
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
@@ -171,7 +172,6 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
     #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
     logger.info('{}: api/get_zip/{}/{}/{}'.format(session['user']['nick_name'], images_per_day, start_date, end_date))
    
-
     #TODO - Need to:
     #       get teh list of images between start date and end date
     #       seive the list to contain no more thjan images_per_day
@@ -187,12 +187,38 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
                      uuid = %s"""
 
             cur.execute(sql, ('21cf6101-c4dc-41f3-9e67-2741e78400e2',))
-
             camera_uuid = cur.fetchone()[0]
 
         #TODO - Need to make sure the user has the permission to view this camera.
-        #- s['organizations'] = [ {'guid':organization[0], 'name':organization[1]} for organization in cur.fetchall() ]
+        if not has_permission(session['user']['user_guid'], camera_uuid, 'view'):
+            logger.warning('user {} does not have permissions to view camera {}'.format(session['user']['user_guid'],
+                camera_uuid))
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+
+        
         logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
+
+        s3_file_names = get_s3_file_names(camera_uuid, images_per_day, start_date, end_date) 
+
+        if len(s3_file_names) == 0:
+            logger.warning('no images found')
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+
+        zip_archive = BytesIO()
+
+        with ZipFile(zip_archive, mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
+
+            for s3_file_name in s3_file_names:
+                current_image = get_s3_image(s3_file_name)
+                if current_image['image_blob'] != None:
+                   zip_file.writestr(s3_file_name, current_image['image_blob'])
+
+        zip_archive.seek(0)
+        logger.info("length of archive: {}".format(len(zip_archive.getvalue())))
+        return send_file(zip_archive, mimetype='application/zip', as_attachment=True, 
+                         attachment_filename='image_archive.zip')
+
+        """-
         result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
 
         if result['bytes'] != None:
@@ -211,6 +237,7 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
 
         else:
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+        """
 
     except:
         logger.error('in /api/get_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
@@ -292,7 +319,6 @@ def image(system_uuid):
 
             camera_uuid = cur.fetchone()[0]
 
-        #TODO: finish the has_permissions function
         if not has_permission(session['user']['user_guid'], camera_uuid, 'view'):
             logger.warning('user_uuid {}: get image permission failure for org {} and camera {}'.format(
                session['user']['user_guid'], session['user']['organizations'][0]['guid'], camera_uuid))
