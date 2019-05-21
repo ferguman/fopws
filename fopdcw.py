@@ -209,9 +209,9 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
         with ZipFile(zip_archive, mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
 
             for s3_file_name in s3_file_names:
-                current_image = get_s3_image(s3_file_name)
+                current_image = get_s3_image(s3_file_name['s3_reference'])
                 if current_image['image_blob'] != None:
-                   zip_file.writestr(s3_file_name, current_image['image_blob'])
+                   zip_file.writestr(s3_file_name['utc_timestamp'].strftime('%Y_%m_%d_%H_%M.jpg'), current_image['image_blob'])
 
         zip_archive.seek(0)
         logger.info("length of archive: {}".format(len(zip_archive.getvalue())))
