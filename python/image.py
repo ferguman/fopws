@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from DbConnection import DbConnection
 from logger import get_sub_logger
 from nacl_fop import decrypt_dict_vals
-from python.boto3_fop import get_s3_image
+from python.boto3_fop import S3Session 
 
 from config.config import dbconfig
 
@@ -10,7 +10,10 @@ logger = get_sub_logger('image')
 
 def get_image_file_v2(s3_file_key):
 
-    return get_s3_image(s3_file_key)
+    with S3Session() as s3:
+        return s3.get_s3_image(s3_file_key)
+
+    #- return get_s3_image(s3_file_key)
 
 
 def get_newest_image_uuid(camera_uuid):
@@ -45,11 +48,13 @@ def get_s3_file_names(camera_uuid, images_per_day, start_date, end_date):
         sd = datetime.strptime(start_date, '%Y-%m-%d')
         ed = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
 
-        logger.info('sql {}'.format(sql))        
-        logger.info('{} {} {}'.format(camera_uuid, sd, ed))
+        #- logger.info('sql {}'.format(sql))        
+        #- logger.info('{} {} {}'.format(camera_uuid, sd, ed))
 
         cur.execute(sql, (camera_uuid, sd, ed))
-        assert(cur.rowcount > 0), 'No images are available for this camera.'
+        #- assert(cur.rowcount > 0), 'No images are available for this camera.'
+        if cur.rowcount < 1:
+            return []
 
         image_period = 24 // int(images_per_day)  #// is for floor division e.g. 3/2 = 1.
         assert image_period != 0, 'error: image_period cannot be zero'
