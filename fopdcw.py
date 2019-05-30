@@ -60,7 +60,7 @@ getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
 
 #TODO: Need a may to remove this cors stuff for the production server.
 # this works for development, i.e serving the web client from my laptop: cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
-cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost', 'http://fop3.urbanspacefarms.com:5000'])
+cors = CORS(app, supports_credentials = True, origins =['http:192.168.4.247', 'http://localhost:8080', 'http://localhost', 'http://fop3.urbanspacefarms.com:5000'])
 
 # Decorate URL route functions with this function in order to restrict access
 # to logged on users.
