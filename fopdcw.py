@@ -17,7 +17,7 @@ from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
 from nacl_fop import decrypt, decrypt_dict_vals
-from python.boto3_fop import get_s3_image
+from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission 
 
@@ -170,14 +170,8 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
     #TODO - verify that the user has the privliges to see the contents of the zip file. 
 
     #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
-    logger.info('{}: api/get_zip/{}/{}/{}'.format(session['user']['nick_name'], images_per_day, start_date, end_date))
+    logger.info('{}: api/get_zip/{}/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, images_per_day, start_date, end_date))
    
-    #TODO - Need to:
-    #       get teh list of images between start date and end date
-    #       seive the list to contain no more thjan images_per_day
-    #       retrieve the images one by one from amazon S3 and add them to zip file as you go
-    #       retrunt he zip file
-
     try:
 
         # Get the camera id
@@ -186,7 +180,7 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
             sql = """select camera_uuid from grow_system where 
                      uuid = %s"""
 
-            cur.execute(sql, ('21cf6101-c4dc-41f3-9e67-2741e78400e2',))
+            cur.execute(sql, (system_uuid,))
             camera_uuid = cur.fetchone()[0]
 
         #TODO - Need to make sure the user has the permission to view this camera.
@@ -208,47 +202,22 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
 
         with ZipFile(zip_archive, mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
 
-            for s3_file_name in s3_file_names:
-                current_image = get_s3_image(s3_file_name['s3_reference'])
-                if current_image['image_blob'] != None:
-                   zip_file.writestr(s3_file_name['utc_timestamp'].strftime('%Y_%m_%d_%H_%M.jpg'), current_image['image_blob'])
+            # TODO: create a context that opens an S3 session on the back end.
+            with S3Session() as s3:
+                for s3_file_name in s3_file_names:
+                    current_image = s3.get_s3_image(s3_file_name['s3_reference'])
+                    if current_image['image_blob'] != None:
+                        zip_file.writestr(s3_file_name['utc_timestamp'].strftime('%Y_%m_%d_%H_%M.jpg'), 
+                                          current_image['image_blob'])
 
         zip_archive.seek(0)
         logger.info("length of archive: {}".format(len(zip_archive.getvalue())))
         return send_file(zip_archive, mimetype='application/zip', as_attachment=True, 
                          attachment_filename='image_archive.zip')
 
-        """-
-        result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
-
-        if result['bytes'] != None:
-
-            zip_archive = BytesIO()
-            with ZipFile(zip_archive, mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
-            #- with ZipFile('test.zip', mode='w', compression=ZIP_DEFLATED, allowZip64=False) as zip_file: 
-                zip_file.writestr('foobar.jpg', result['bytes'])
-
-            #- return Response(zip_archive.getvalue(), mimetype='application/zip')
-            #- return send_file('test.zip', mimetype='application/zip', as_attachment=True, attachment_filename='image_archive.zip')
-            zip_archive.seek(0)
-            logger.info("length of archive: {}".format(len(zip_archive.getvalue())))
-            return send_file(zip_archive, mimetype='application/zip', as_attachment=True, attachment_filename='image_archive.zip')
-            #- return Response(zip_archive.getvalue(), mimetype='application/zip')
-
-        else:
-            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
-        """
-
     except:
         logger.error('in /api/get_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
-
-    #+ return send_file(BytesIO(result['bytes'], mimetype='image/svg+xml'))
-
-
-    #- return send_from_directory('static', 'graph_error.jpg', as_attachment=True)
-    #- Content-Disposition: attachment; filename="filename.jpg" filename*="filename.jpg"
-
 
 @app.route('/api/chart/<data_type>/<grow_system_guid>')
 @enforce_login
@@ -325,12 +294,9 @@ def image(system_uuid):
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
         logger.info('org uud: {}, camera uuid: {}'.format(session['user']['organizations'][0]['guid'], camera_uuid))
-        #- result = get_image_file(session['user']['organizations'][0]['guid'], camera_uuid)
         result = get_image_file_v2(get_newest_image_uuid(camera_uuid))
 
-        #- if result['bytes'] != None:
         if result['image_blob'] != None:
-            #- return Response(result['bytes'], mimetype='image/jpg')
             return Response(result['image_blob'], mimetype='image/jpg')
         else:
             logger.error('get image failure {}'.format(result['msg']))
