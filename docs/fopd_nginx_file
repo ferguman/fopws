@@ -2,6 +2,10 @@ server {
 
     listen 5000 ssl;
 
+    # Be aware that downstream processes (such as Gunicorn) in the request chain may have their own timeout 
+    # values.  See gunicorn_conf.py.
+    proxy_read_timeout 300;
+
     ssl_certificate /etc/letsencrypt/live/[-- put your URL here --]/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/[-- put your URL here --]/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
@@ -9,8 +13,16 @@ server {
 
     server_name [-- put a list of the target URL's here --];
 
+    # Tell nginx where the static (i.e. vuejs client code) is located.
     location / {
+        root /home/[-- put your home directory name here --]/fopdw/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Tell nginx where the web service api urls should go.
+    #location / {
+    location /api/ {
         include proxy_params;
-        proxy_pass http://unix:[-- put the full path to your WSGI "sock" file here --];
+        proxy_pass http://unix:/home/[-- put your home directory name here --]/fopdw/fopdcw.sock;
     }
 }

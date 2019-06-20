@@ -1,8 +1,8 @@
 import boto3
-from logger import get_sub_logger 
 from sys import exc_info
 import io
 
+from logger import get_sub_logger 
 from nacl_fop import decrypt
 from config.config import image_file_bucket_name, fop_aws_access_key_id_b64_cipher, fop_aws_secret_access_key_b64_cipher
 
@@ -41,7 +41,7 @@ class S3Session():
                 return r
 
         except:
-            logger.error('error connecting to s3: {}:{}'.format(exc_info()[0], exc_info()[1]))
+            logger.error('error connecting to s3: {}:{}:{}'.format(exc_info()[0], exc_info()[1], exc_info()[2]))
             return {'image_blob':None, 'msg':'error occured during s3 image retreival'}
 
 # TODO: make this a method of the S3Session object

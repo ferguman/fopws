@@ -20,6 +20,7 @@ from nacl_fop import decrypt, decrypt_dict_vals
 from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission 
+from python.twilio_fop import send_text
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
@@ -82,9 +83,59 @@ def enforce_login(func):
 
     return wrapper
 
-# The following two routes (login and logout) should be the only ones that are exposed
-# to sessionless traffic.
+# TODO: put this function in jose_fop
+def get_password_reset_code():
+ 
+    #TODO: generate a reandom reset code- 6 digits
+    return '123456'
+
+#TODO: Create a folder for database objects and put this function in it. Put the folder in the Python folder.
+class Person():
+
+    def __init__(self, nick_name):
+        # TODO: Lookup user in database and hydrate this object.
+        # Sanitize the inputs as you do this.
+        self.nick_name = 'ferguman'
+        self.text_number = '+1314497732' 
+
+    def send_password_reset_code(self):
+        result = send_text(self.text_number,  'Reset Code: {}'.format(get_password_reset_code()))
+        if result['error'] == False:
+            self.set_new_password_reset_code()
+        else:
+            self.clear_password_reset_code()
+
+    def set_new_password_reset_code(self):
+        #TODO: update the Person table to contain the password reset code and hte timestamp
+        # save the 6 digit number in the db as the reset code with a timeout of say 1 hour 
+        pass
+
+    def clear_password_reset_code(self):
+
+        #TODO implement a clear of the user name reset code and reset_code_timeout in the Person table
+        pass
+    
+
+# The following three routes:get_reset_code, login and logout, should be the only ones that are exposed
+# to sessionless connections.
 #
+@app.route('/api/get_reset_code/<user_name>', methods=['GET'])
+def get_reset_code(user_name):
+
+     # TODO: This url can be used by hackers to fish for valid usernames. Is this an issue?
+
+     try:
+
+          person = Person(nick_name = user_name)
+          person.send_password_reset_code()
+
+          raise NameError('un-implemented API call')
+
+     except Exception as err:
+        logger.error('api/get_reset_code exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return json.dumps({'r':False, 'logged_in':None})
+
+
 @app.route("/api/login", methods=['POST'])
 def process_api_login():
 
@@ -108,6 +159,7 @@ def process_api_login():
          session['user'] = None
          return json.dumps({'logged_in':False, 'organizations':[{}]})
          #- return '{"logged_in":false}'
+
 
 @app.route("/api/logout", methods=['POST'])
 def process_logout():
@@ -154,14 +206,6 @@ def get_chart_list(system_uuid):
         logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False, 'chart_list':[{}]})
 
-    """-
-                    'chart_list':[{'type':cl['vue_name'], 'rel_url':'/chart/{}/{}'.format(cl['vue_name'], system_uuid)}
-                                  for cl in cur.fetchone()[0]['chart_list']]
-    return json.dumps({'r':True, 'chart_list':[
-        {'type':'air_temperature', 'rel_url':'/chart/air_temperature/{}'.format(system_uuid)},
-        {'type':'air_humidity', 'rel_url':'/chart/air_humidity/{}'.format(system_uuid)}
-        ] })
-    """
 
 @app.route('/api/get_zip/<system_uuid>/<images_per_day>/<start_date>/<end_date>')
 @enforce_login

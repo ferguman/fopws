@@ -8,6 +8,9 @@ def has_permission(user_uuid, device_uuid, permission):
     #       Each permission has the permission types: admin and view.
     #
     device_permissions_table = [
+            {'device_uuid':'f38dc0c8-658a-4acd-b1c5-c66e17287027', 'group_id':1234, 'name':'usf',
+             'organization_uuid':'dac952cd-8968-4c26-a508-813861015995',
+             'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':False}},
             {'device_uuid':'dda50a41-f71a-4b3e-aeea-2b58795d2c99', 'group_id':1234, 'name':'usf',
              'organization_uuid':'dac952cd-8968-4c26-a508-813861015995',
              'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':False}},
