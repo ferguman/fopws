@@ -55,11 +55,20 @@ couchdb_password_b64_cipher = ''
 # value from the JWT service to which this installation of fopdw will connect to. Then put
 # the b64 encoded cipher text for the secret key as the value of jws_secret_key_b64_enc.
 #
-# Note: To encrypt and b64 encode the secret key perform the following from within the Python interetter:
+# Note: To encrypt and b64 encode the secret key perform the following from within the Python interpretter:
 #    from nacl_fop import encrpty
 #    encrypt([put the secret key here as a binary string])
 #    Use the value generated above as the value of jws_secret_key_b64_enc below.
 jws_secret_key_b64_enc = ''
+
+# fopd using Twilio to send SMS messages.
+# Note: To encrypt and b64 encode the Twilio information perform the following from within the Python interpretter:
+#    from nacl_fop import encrypt
+#    encrypt([put the Twilio information here as a binary string])
+#    Use the values generated above as the values of the variables below.
+twilio_account_sid_b64_cipher = ''
+twilio_auth_token_b64_cipher = ''
+twilio_from_number_b64_cipher = ''
 
 # Misceallaneous
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL 

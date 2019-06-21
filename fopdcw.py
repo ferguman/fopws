@@ -95,8 +95,8 @@ class Person():
     def __init__(self, nick_name):
         # TODO: Lookup user in database and hydrate this object.
         # Sanitize the inputs as you do this.
-        self.nick_name = 'ferguman'
-        self.text_number = '+1314497732' 
+        self.nick_name = ''
+        self.text_number = '' 
 
     def send_password_reset_code(self):
         result = send_text(self.text_number,  'Reset Code: {}'.format(get_password_reset_code()))
