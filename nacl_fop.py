@@ -1,4 +1,5 @@
 from base64 import standard_b64encode, standard_b64decode
+from secrets import randbelow
 
 from nacl import secret
 
@@ -23,3 +24,8 @@ def decrypt_dict_vals(d: dict, dict_keys_to_decrypt):
             new_dict[key] = val
 
     return new_dict
+
+def generate_reset_code():
+
+    """Uses the Python secrets library to generate a 6 digit random number with leading zeros"""
+    return '{:06}'.format(randbelow(1000000))

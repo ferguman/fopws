@@ -16,7 +16,7 @@ from django_authenticator import get_hash_info, check_password_hash
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
-from nacl_fop import decrypt, decrypt_dict_vals
+from nacl_fop import decrypt, decrypt_dict_vals, generate_reset_code
 from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission 
@@ -59,7 +59,7 @@ from logger import get_the_fopdcw_log_handler
 getLogger('flask_cors').level =  INFO
 getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
 
-#TODO: Need a may to remove this cors stuff for the production server.
+#TODO: move this stuff to the configuration file
 # this works for development, i.e serving the web client from my laptop: cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
 cors = CORS(app, supports_credentials = True, origins =['http:192.168.4.247', 'http://localhost:8080', 'http://localhost', 'http://fop3.urbanspacefarms.com:5000'])
 
@@ -83,23 +83,57 @@ def enforce_login(func):
 
     return wrapper
 
-# TODO: put this function in jose_fop
-def get_password_reset_code():
- 
-    #TODO: generate a reandom reset code- 6 digits
-    return '123456'
-
 #TODO: Create a folder for database objects and put this function in it. Put the folder in the Python folder.
 class Person():
 
-    def __init__(self, nick_name):
-        # TODO: Lookup user in database and hydrate this object.
-        # Sanitize the inputs as you do this.
-        self.nick_name = ''
-        self.text_number = '' 
+    def __init__(self, user_name):
 
+        self.nick_name = None 
+        self.guid = None 
+        self.django_username = None
+        self.text_number = None 
+
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select person.nick_name, person.guid, person.django_username,
+                     text_number 
+                     from person where person.django_username = %s;"""
+
+            cur.execute(sql, (user_name[0:150],))
+
+            if cur.rowcount == 1:
+
+                record = cur.fetchone()
+                self.nick_name = record[0]
+                self.guid = record[1]
+                self.django_username = record[2]
+                self.text_number = record[3]
+
+            else:
+       
+                logger.warn('no unique database record for {}'.format(user_name[0:150]))
+
+    @staticmethod
+    def check_that_unique_user_exists(user_name):
+
+         # See if the user name given matches anything in the database.
+         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+             sql = """select person.guid from person where person.django_username = %s;"""
+
+             cur.execute(sql, (user_name[0:150],))
+
+             if cur.rowcount == 1:
+                 return True 
+             else:
+                 return False
+    
     def send_password_reset_code(self):
-        result = send_text(self.text_number,  'Reset Code: {}'.format(get_password_reset_code()))
+
+        rc = generate_reset_code()
+
+        result = send_text(self.text_number,  'fop reset code: {}'.format(rc))
+
         if result['error'] == False:
             self.set_new_password_reset_code()
         else:
@@ -122,16 +156,25 @@ class Person():
 @app.route('/api/get_reset_code/<user_name>', methods=['GET'])
 def get_reset_code(user_name):
 
-     # TODO: This url can be used by hackers to fish for valid usernames. Is this an issue?
+    # TODO: This url can be used by hackers to fish for valid usernames. Is this an issue?
 
-     try:
+    try:
 
-          person = Person(nick_name = user_name)
-          person.send_password_reset_code()
+        if Person.check_that_unique_user_exists(user_name):
 
-          raise NameError('un-implemented API call')
+            # At this point we know the user name exists in the database
+            person = Person(user_name[0:150])
+            person.send_password_reset_code()
+            
+            raise NameError('un-implemented API call')
 
-     except Exception as err:
+            return json.dumps({'r':True, 'logged_in':None})
+
+        else:
+            logger.warn('api/get_reset_code:BAD USER INPUTS: no unique database record for {}'.format(user_name[0:150]))
+            return json.dumps({'r':False, 'logged_in':None})
+
+    except Exception as err:
         logger.error('api/get_reset_code exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False, 'logged_in':None})
 
