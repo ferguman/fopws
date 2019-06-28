@@ -24,6 +24,10 @@ from python.twilio_fop import send_text
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
+##############
+from flask_socketio import SocketIO
+##############
+
 class FopwFlask(Flask):
 
     jinja_options = Flask.jinja_options.copy()
@@ -47,7 +51,7 @@ app = FopwFlask(__name__)
 #        become invalid after the restart.
 #
 app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
-
+socketio = SocketIO(app)
 
 # This function has the side effect of injecting the fopdcw log handler into the 
 # flask.app logger.
@@ -368,8 +372,7 @@ def image(system_uuid):
         # Get the camera id
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            sql = """select camera_uuid from grow_system where 
-                     uuid = %s"""
+            sql = """select camera_uuid from grow_system where uuid = %s"""
 
             cur.execute(sql, (system_uuid,))
 
@@ -412,6 +415,15 @@ def get_crops():
         logger.error('get_crops exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'server error':True})
 
+# TODO - this routine is a hack. as the software matures it will need to refactored out.
+def get_perms(perm_list):
+
+    if (perm_list[1] or perm_list[3]) and (perm_list[0] or perm_list[2]):
+        return 'admin, view'
+    if perm_list[1] or perm_list[3]:
+        return 'admin'
+    if perm_list[0] or perm_list[2]:
+        return 'view'
 
 @app.route('/api/get_devices', methods=['GET'])
 @enforce_login
@@ -422,18 +434,23 @@ def get_devices():
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            #- sql = """select uuid, local_name, grow_system_type from grow_system where
-            #-         grow_system.organization_uuid = %s"""
-                     
-            sql = """select uuid, local_name, grow_system_type, access_type from 
-                     grow_system inner join grow_system_access_list on 
-                     grow_system.uuid = grow_system_access_list.grow_system_uuid where
-                     grow_system_access_list.organization_uuid = %s"""
+            #- sql = select uuid, local_name, grow_system_type, access_type from 
+            #-          grow_system inner join grow_system_access_list on 
+            #-         grow_system.uuid = grow_system_access_list.grow_system_uuid where
+            #-         grow_system_access_list.organization_uuid = %s
+
+            #TODO: Add the group table to the database.  Add a group with uuid '30d78ab9-611d-4c44-8bec-a5a91240e1e6'
+            #      Then refactor this code to remove the hard coded group.
+            sql = """select uuid, local_name, grow_system_type,
+                  organization_view, organization_admin, group_view, group_admin from grow_system where
+                  (organization_uuid = %s and (organization_admin or organization_view)) or 
+                  (group_uuid = '30d78ab9-611d-4c44-8bec-a5a91240e1e6' and (group_admin or group_view))"""
 
             cur.execute(sql, (session['user']['organizations'][0]['guid'],))
 
             if cur.rowcount > 0:
-                devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2], 'access_type':grow_system[3]} for grow_system in cur.fetchall()]
+                devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2],
+                            'access_type':get_perms(grow_system[3:7])} for grow_system in cur.fetchall()]
             else:
                 devices = [{}]
 
@@ -442,11 +459,6 @@ def get_devices():
     except:
         logger.error('get_devices exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False})
-
-
-
-
-
 
 #ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZk
 #- TODO: Review all the routes beneath this line once the system is converted to be
@@ -641,4 +653,5 @@ def get_image_file(org_id, camera_id):
         return {'bytes':None}
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port='8081')
+    #- app.run(host='0.0.0.0', port='8081')
+    pass
