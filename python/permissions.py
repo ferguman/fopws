@@ -14,7 +14,7 @@ def has_permission(user_uuid, device_uuid, permission):
             {'device_uuid':'dda50a41-f71a-4b3e-aeea-2b58795d2c99', 'group_id':1234, 'name':'usf',
              'organization_uuid':'dac952cd-8968-4c26-a508-813861015995',
              'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':False}},
-            {'device_uuid':'80eb0af1-bb85-41ef-9daf-633279e913bb', 'group_id':1234, 'name':'usf',
+     {'device_uuid':'80eb0af1-bb85-41ef-9daf-633279e913bb', 'group_id':1234, 'name':'usf',
              'organization_uuid':'90e22482-087b-484c-8f89-8e88c02164b8',
              'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':True}}]
     person_groups_table = [

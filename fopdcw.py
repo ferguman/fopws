@@ -83,7 +83,6 @@ def enforce_login(func):
             #TODO Need to make this a installation variable so that you can turn it off on production.
             r.headers['Access-Control-Allow-Origin'] = '*'
             return r
-            #- return 'Please login' 
 
     return wrapper
 
@@ -136,25 +135,34 @@ class Person():
 
         rc = generate_reset_code()
 
+        self.set_new_password_reset_code(rc)
+
         result = send_text(self.text_number,  'fop reset code: {}'.format(rc))
 
-        if result['error'] == False:
-            self.set_new_password_reset_code()
-        else:
-            self.clear_password_reset_code()
 
-    def set_new_password_reset_code(self):
+    def set_new_password_reset_code(self, rc):
         #TODO: update the Person table to contain the password reset code and hte timestamp
         # save the 6 digit number in the db as the reset code with a timeout of say 1 hour 
-        pass
+        
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """update person set password_reset_code = %s, 
+                                       password_reset_code_create_time = now(),
+                                       password_reset_failed_tries = 0 
+                     where guid = %s;"""
+
+            cur.execute(sql, (rc, self.guid))
+            #TODO: if the sql command fails then you need to tell the user to try again.
+     
+  
 
     def clear_password_reset_code(self):
 
         #TODO implement a clear of the user name reset code and reset_code_timeout in the Person table
         pass
     
-
-# The following three routes:get_reset_code, login and logout, should be the only ones that are exposed
+# #########################################################################
+# The following four routes:get_reset_code, login, logout, and reset_password should be the only ones that are exposed
 # to sessionless connections.
 #
 @app.route('/api/get_reset_code/<user_name>', methods=['GET'])
@@ -166,7 +174,8 @@ def get_reset_code(user_name):
 
         if Person.check_that_unique_user_exists(user_name):
 
-            # At this point we know the user name exists in the database
+            # At this point we know the user name exists in the database - so instantiate a person in Python
+            # so that you can send a password reset code.
             person = Person(user_name[0:150])
             person.send_password_reset_code()
             
@@ -207,10 +216,9 @@ def process_api_login():
          return json.dumps({'logged_in':False, 'organizations':[{}]})
          #- return '{"logged_in":false}'
 
-
+#TODO: Think about protecting this with @enforce_login. If there is no session then why bother 
 @app.route("/api/logout", methods=['POST'])
 def process_logout():
-
     try:
         logger.info('{}: api/logout'.format(session['user']['nick_name']))
         session.pop('user', None)
@@ -219,6 +227,17 @@ def process_logout():
         logger.error('api/logout exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
         return json.dumps({'r':False, 'logged_in':None})
 
+@app.route("/api/reset_password", methods=['POST'])
+def reset_password():
+
+    try:
+        logger.info('api/reset_password')
+        return json.dumps({'r':True, 'message':'this function is not implemented'})
+    except Exception as err:
+        logger.error('api/reset_password exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
+        return json.dumps({'r':False, 'message':'an error occurred'})
+
+# #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
 # order to restrict access to logged in users.
 
@@ -401,15 +420,26 @@ def image(system_uuid):
 @enforce_login
 def get_crops():
 
+    logger.info('{}: api/get_crops/'.format(session['user']['nick_name']))
+
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            sql = """select 0 grow_batch_id, start_date, 'germination' from 
-                     germination"""
+            sql = """select grow_batch_id, g.start_date, 'germination' as status, s.common_name, s.variety from 
+                     germination as g inner join seed_lot as s on g.seed_lot_id = s.id
+                     union
+                     select 100, '20190620' as start_date, 'stage 2' as status, 'basil' as common_name, 'Genovese' as variety;"""
 
             cur.execute(sql)
 
-            return json.dumps({'server error':False, 'rows':cur.rowcount})
+            if cur.rowcount > 0:
+                crops = [{'batch_id':c[0], 'start_date':c[1].strftime('%x'), 'status':c[2], 'name':c[3], 'variety':c[4]}
+                         for c in cur.fetchall()]
+              
+            else:
+                crops = [{}]
+
+            return json.dumps({'r':True, 'crops':crops})
 
     except:
         logger.error('get_crops exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
