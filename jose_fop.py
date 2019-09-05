@@ -86,6 +86,7 @@ def make_image_request_jwt(org_id, camera_id):
                     decrypt(jws_secret_key_b64_enc),
                     algorithm='HS256')
 
+#- TODO: This routine appears to be no longer used.  Confirm and then delete.
 def upload_camera_image(path_name, url, camera_id):
 
     with open(path_name, 'rb') as f:

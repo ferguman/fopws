@@ -1,3 +1,6 @@
+# TODO: Convert to allow chart data to be pulled from Postgresql database
+# TODO: Look at using D3.js as the charting tool
+
 import json
 from datetime import datetime, timedelta
 from os import getcwd
