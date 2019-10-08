@@ -20,6 +20,9 @@ def has_permission(user_uuid, device_uuid, permission):
             {'device_uuid':'63c3cea9-2f75-49a6-b2b7-2da09e2b806a', 'group_id':1234, 'name':'usf',
              'organization_uuid':'18ffe759-bf6f-4f34-9a60-7c43d48a7fb0',
              'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
+            {'device_uuid':'25895b2b-3267-45e3-ab25-b1958829d932', 'group_id':1234, 'name':'usf',
+             'organization_uuid':'18ffe759-bf6f-4f34-9a60-7c43d48a7fb0',
+             'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
             ]
     person_groups_table = [
             {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 

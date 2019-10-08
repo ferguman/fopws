@@ -343,21 +343,23 @@ def chart(data_type, grow_system_guid):
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
             # Use the grow_system_guid to lookup the chart configuration.
-            sql = """select device.chart_config from grow_system_devices inner join device on
+            sql = """select device.chart_config, device.guid from grow_system_devices inner join device on
                      grow_system_devices.device_uuid = device.guid
                      where grow_system_devices.grow_system_uuid = %s;"""
 
             cur.execute(sql, (grow_system_guid,))
             rc = cur.rowcount
 
-            assert(rc > 0), 'No chart configurations are associated with grow system: {}'.format(grow_system_guid)
+            assert(rc == 1), 'No chart configurations are associated with grow system: {}'.format(grow_system_guid)
 
-            result = generate_chart(data_type, cur.fetchone()[0], session['user']['ct_offset'])
+            r = cur.fetchone()
+            result = generate_chart(r[1], data_type, r[0], session['user']['ct_offset'])
             
             if result['bytes'] != None:
                 return Response(result['bytes'], mimetype='image/svg+xml')
             else:
-                return send_from_directory('static', 'graph_error.jpg', mimetype='image/png')
+                #- return send_from_directory('static', 'graph_error.jpg', mimetype='image/png')
+                return send_from_directory('static', 's3_error.jpg', mimetype='image/png')
 
     except:
         logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
