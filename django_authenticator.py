@@ -8,6 +8,7 @@ from logger import get_sub_logger
 logger = get_sub_logger(__name__)
 
 # Originally adapted from Django code at https://docs.djangoproject.com/en/2.1/_modules/django/utils/encoding/#is_protected_type
+
 _PROTECTED_TYPES = (
     type(None), int, float, Decimal, datetime.datetime, datetime.date, datetime.time,
 )
@@ -82,7 +83,8 @@ def check_password_hash(django_hash, password) -> bool:
 
         # Seperate the Django hashing mechanism parts. Note that the hash parts are stored as:
         # (hash_type)$(iterations)$(salt)$(b64_hash)
-        hash_parts = django_hash.split('$', 4) 
+        #- hash_parts = django_hash.split('$', 4) 
+        hash_parts = django_hash.split('$', 3) 
         assert (hash_parts != None and len(hash_parts) == 4), 'incorrect djanga hash'
 
         # This code base only supports the standard Django salt method
@@ -101,7 +103,6 @@ def check_password_hash(django_hash, password) -> bool:
 # returns the Django hash information as  -> (hash_type)$(iterations)$(salt)$(b64_hash)
 #
 def get_hash_info(cur, username):
-
 
     try:
         # TODO: change sql so that it only returns the top 2 records
@@ -123,3 +124,11 @@ def get_hash_info(cur, username):
             return None
     except:
         logger.error('fault encountered in get_user_password_hash: {}, {}'.format(exc_info()[0], exc_info()[1]))
+
+
+def check_password(cur, username, password) -> bool:
+    """ Check the supplied password by hashing it and comparing it to the hash
+        stored in the database for the user.
+    """ 
+
+    return check_password_hash(get_hash_info(cur, username), password)

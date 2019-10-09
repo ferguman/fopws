@@ -12,7 +12,8 @@ import requests
 import psycopg2
 
 from DbConnection import DbConnection
-from django_authenticator import get_hash_info, check_password_hash 
+#- from django_authenticator import get_hash_info, check_password_hash 
+from django_authenticator import check_password 
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
 from logger import get_top_level_logger
@@ -550,18 +551,14 @@ def doser():
 #
 def authenticate(username, password, cur):
 
-    if username == 'peter'\
-        and password == 'book$hit&sheep':
-
-        return True
-
     # Is the user in the db?
     try:
         assert ( username != None), 'empty username'
         assert (len(username) > 3 and len(username) <= 150), 'username must be 4 to 150 characters long'
         logger.info('login request from {}'.format(username))
 
-        return check_password_hash(get_hash_info(cur, username), password)
+        #- return check_password_hash(get_hash_info(cur, username), password)
+        return check_password(cur, username, password)
 
     except:
         logger.error('authenticate exception: {}, {}'.format(exc_info()[0], exc_info()[1]))

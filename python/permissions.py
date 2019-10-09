@@ -26,14 +26,18 @@ def has_permission(user_uuid, device_uuid, permission):
             ]
     person_groups_table = [
             {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 
-             'organization_uuid':'dac952cd-8968-4c26-a508-813861015995',
-             'group_name':'usf', 'group_id':1234}
+             'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'usf', 'group_id':1234},
+            {'person_uuid':'034a658b-0bce-4214-9276-eebd4b574bf9', 'name':'peter', 
+             'organization_uuid':'18ffe759-bf6f-4f34-9a60-7c43d48a7fb0', 'group_name':'mars', 'group_id':1235}
             ]
     person_table = [
             {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 
              'organization_uuid':'dac952cd-8968-4c26-a508-813861015995'},
             {'person_uuid':'d2f0fd09-2892-4d35-85c7-c53b0b739b43', 
-             'organization_uuid':'90e22482-087b-484c-8f89-8e88c02164b8'}]
+             'organization_uuid':'90e22482-087b-484c-8f89-8e88c02164b8'},
+            {'person_uuid':'034a658b-0bce-4214-9276-eebd4b574bf9', 
+             'organization_uuid':'18ffe759-bf6f-4f34-9a60-7c43d48a7fb0'},
+            ]
 
     # Get the device permissions 
     this_devices_permissions = None
