@@ -26,6 +26,8 @@ from python.twilio_fop import send_text
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
 ##############
+# TODO: Build in a Web Socket interface for realtime control of fopd devices.
+#       See: https://hacks.mozilla.org/2019/10/firefoxs-new-websocket-inspector/
 from flask_socketio import SocketIO
 ##############
 
