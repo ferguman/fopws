@@ -20,7 +20,7 @@ from logger import get_top_level_logger
 from nacl_fop import decrypt, decrypt_dict_vals, generate_reset_code
 from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
-from python.permissions import has_permission 
+from python.permissions import has_permission, get_user_groups
 from python.twilio_fop import send_text
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
@@ -469,19 +469,15 @@ def get_devices():
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            #- sql = select uuid, local_name, grow_system_type, access_type from 
-            #-          grow_system inner join grow_system_access_list on 
-            #-         grow_system.uuid = grow_system_access_list.grow_system_uuid where
-            #-         grow_system_access_list.organization_uuid = %s
-
-            #TODO: Add the group table to the database.  Add a group with uuid '30d78ab9-611d-4c44-8bec-a5a91240e1e6'
-            #      Then refactor this code to remove the hard coded group.
             sql = """select uuid, local_name, grow_system_type,
                   organization_view, organization_admin, group_view, group_admin from grow_system where
                   (organization_uuid = %s and (organization_admin or organization_view)) or 
-                  (group_uuid = '30d78ab9-611d-4c44-8bec-a5a91240e1e6' and (group_admin or group_view))"""
+                  (group_uuid in %s and (group_admin or group_view))"""
 
-            cur.execute(sql, (session['user']['organizations'][0]['guid'],))
+            logger.info('get_devics SQL: {}'.format(
+                cur.mogrify(sql, (session['user']['organizations'][0]['guid'],get_user_groups(session['user']['user_guid'])))))
+            
+            cur.execute(sql, (session['user']['organizations'][0]['guid'],get_user_groups(session['user']['user_guid'])))
 
             if cur.rowcount > 0:
                 devices = [{'grow_system_guid':grow_system[0], 'name':grow_system[1], 'type':grow_system[2],
