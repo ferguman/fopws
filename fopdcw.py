@@ -12,7 +12,6 @@ import requests
 import psycopg2
 
 from DbConnection import DbConnection
-#- from django_authenticator import get_hash_info, check_password_hash 
 from django_authenticator import check_password 
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
@@ -555,7 +554,6 @@ def authenticate(username, password, cur):
         assert (len(username) > 3 and len(username) <= 150), 'username must be 4 to 150 characters long'
         logger.info('login request from {}'.format(username))
 
-        #- return check_password_hash(get_hash_info(cur, username), password)
         return check_password(cur, username, password)
 
     except:
@@ -564,21 +562,18 @@ def authenticate(username, password, cur):
 
 def create_new_session(username, cur):
 
-    #TODO - Create a session based upon the users database profile.
-    # ct_offset is the number of hours that the user wants their time data to be offset from central time.
-    # The server (Ubuntu) generates central time as per US rules for daylight savings so this setting shouldn't need
-    # to be adjusted to account for day light savings time.
+    # Create a session based upon the users database profile.
+
     # TODO: The ct_offset stuff won't work. figure out a way to store the users preferred time zone and refactor
     # to slide all display times from the central time (i.e. server time) to the users time.  Make server time
     # a configuration setting.
     #
-
-    #- s = {'user_name': username, 'camera_id':'dda50a41f71a4b3eaeea2b58795d2c99', 'ct_offset':0}
-    s = {'user_name': username, 'ct_offset':0}
-
-    #- sql = """select person.nick_name, person.guid, person.django_username, participant.organization_guid
-    #-         from person inner join participant on person.guid = participant.guid 
-    #-         where person.django_username = %s;"""
+    # TODO: Need a way to set ct_offset correctly.
+    # ct_offset is the number of hours that the user wants their time data to be offset from central time.
+    # The server (Ubuntu) generates central time as per US rules for daylight savings so 
+    # one could use Ubunutu as the source of truth. The command: date +'%:z %Z' will
+    # return the current offset from UTC for the Ubuntu time. 
+    s = {'user_name': username, 'ct_offset':-5}
 
     sql = """select person.nick_name, person.guid, person.django_username 
              from person where person.django_username = %s;"""
@@ -593,7 +588,6 @@ def create_new_session(username, cur):
     person_info = cur.fetchone()
     s['user_guid'] = person_info[1]
     s['nick_name'] = person_info[0]
-    #- s['org_id'] = person_info[3]
 
     # Now get the user's organizations
     sql = """select participant.organization_guid, organization.local_name from

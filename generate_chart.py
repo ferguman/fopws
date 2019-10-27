@@ -59,8 +59,6 @@ import re
 def generate_chart_from_couchdb(data_type, couchdb_db_name, chart_info, ct_offset):
 
     # Get the data from couchdb
-    #- couch_query = couchdb_location_url + decrypt(couchdb_database_name_b64_cipher).decode('ascii') + '/'\
-    #- couch_query = couchdb_location_url + chart_config['couchdb_db_name'] + '/'\
     couch_query = couchdb_location_url + couchdb_db_name + '/'\
                      + '_design/doc/_view/attribute_value?'\
                      + 'startkey=["{0}","{1}",{2}]&endkey=["{0}"]&descending=true&limit=60'.format(
@@ -118,8 +116,8 @@ def generate_chart_from_postgresql(device_uuid, data_type, chart_info, ct_offset
     """ data_type is a string formatted as: subject_attribute """
 
     try:
-        #TODO: Need to figure out how to show the times in the timezone as per the user's time zone. 
-        q = """select seo.units as units, seo.utc_timestamp at time zone 'CST' as timestamp, seo.measurement_value as value
+        #- q = """select seo.units as units, seo.utc_timestamp at time zone 'CST' as timestamp, seo.measurement_value as value
+        q = """select seo.units as units, seo.utc_timestamp as timestamp, seo.measurement_value as value
                from  environment_observation as eo 
                      inner join scalar_environment_observation as seo on eo.id = seo.environment_observation_id
                      inner join environment_attribute as ea on eo.environment_attribute_id = ea.id
@@ -145,13 +143,12 @@ def generate_chart_from_postgresql(device_uuid, data_type, chart_info, ct_offset
                 enable_display_unit_error_msg = True
 
                 values = cur.fetchall()
-                #- v_lst = [float(apply_unit_conversion(x, chart_info)) for x in r.json()['rows']]
                 v_lst = [float(apply_unit_conversion({'value':{'units':x[0],'timestamp':x[1],'value':x[2]}}, chart_info))\
                          for x in values]
 
                 td = timedelta(hours=ct_offset)
-                #- ts_lst = [(datetime.fromtimestamp(x[1]) + td).strftime('%m/%d %I:%M %p') for x in values]
-                ts_lst = [x[1].strftime('%m/%d %I:%M %p') for x in values]
+                logger.info('adjusting time with hour offset = {}'.format(ct_offset))
+                ts_lst = [(x[1] + td).strftime('%m/%d %I:%M %p') for x in values]
                 ts_lst.reverse()
 
                 line_chart = pygal.Line(x_label_rotation=20, show_minor_x_labels=False)
@@ -182,7 +179,6 @@ def generate_chart_from_postgresql(device_uuid, data_type, chart_info, ct_offset
 # TODO: implement the ct_offset parameter. It should shift the time ct_offset hours from the 
 #       system time. The system time is assumed to be central time hence the name ct_offset.
 #
-#- def generate_chart(grow_system_uuid, data_type, chart_config, ct_offset):
 def generate_chart(device_uuid, data_type, chart_config, ct_offset):
 
     # first find the chart type that the user is requesting
