@@ -275,6 +275,39 @@ def get_chart_list(system_uuid):
         return json.dumps({'r':False, 'chart_list':[{}]})
 
 
+@app.route('/api/get_data_zip/<system_uuid>/<start_date>/<end_date>')
+@enforce_login
+def get_data_zip(system_uuid, start_date, end_date):
+    #TODO - verify that the user has the privliges to see the contents of the zip file. 
+
+    #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
+    logger.info('{}: api/get_data_zip/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, start_date, end_date))
+
+
+    try:
+
+        # Get the fopd device UUID 
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select device_uuid from grow_system as gs inner join
+                     grow_system_devices as gsd on gs.uuid = gsd.grow_system_uuid where 
+                     gs.uuid = %s"""
+     
+
+            cur.execute(sql, (system_uuid,))
+            device_uuid = cur.fetchone()[0]
+       
+        logger.info('fopd device id {}'.format(device_uuid))
+       
+        return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+        #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+
+    except:
+        logger.error('in /api/get_data_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+        #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+
+
 @app.route('/api/get_zip/<system_uuid>/<images_per_day>/<start_date>/<end_date>')
 @enforce_login
 def get_zip(system_uuid, images_per_day, start_date, end_date):
@@ -329,7 +362,8 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
 
     except:
         logger.error('in /api/get_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
-        return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+        return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+        #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
 @app.route('/api/chart/<data_type>/<grow_system_guid>')
 @enforce_login
@@ -573,7 +607,7 @@ def create_new_session(username, cur):
     # The server (Ubuntu) generates central time as per US rules for daylight savings so 
     # one could use Ubunutu as the source of truth. The command: date +'%:z %Z' will
     # return the current offset from UTC for the Ubuntu time. 
-    s = {'user_name': username, 'ct_offset':-5}
+    s = {'user_name': username, 'ct_offset':-6}
 
     sql = """select person.nick_name, person.guid, person.django_username 
              from person where person.django_username = %s;"""

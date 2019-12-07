@@ -14,10 +14,12 @@
 #TODO: Add group related columns and tables to the fop database to hold the information that is currently hard coded in 
 #      in the data structures below.
 
+# Some Group Id's explicitly declared for handy reference
 mars_gid = '30d78ab9-611d-4c44-8bec-a5a91240e1e6'
 micds_gid = '09e463e7-cdbf-410c-bc2a-5b0691bffdbf' 
 usf_gid = 'b456f6ec-6293-4077-9ad1-f1f1b01524d6' 
 slsc_gid = '37cad361-cc28-4730-b676-7a170cf3a37a' 
+slip_gid = 'ee288832-0017-4976-ac52-b670bf6c7b55'
 
 device_permissions_table = [
     {'device_uuid':'f38dc0c8-658a-4acd-b1c5-c66e17287027', 'group_id':usf_gid, 'name':'usf',
@@ -31,6 +33,18 @@ device_permissions_table = [
      'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
     {'device_uuid':'25895b2b-3267-45e3-ab25-b1958829d932', 'group_id':micds_gid, 'name':'micds',
      'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds_1 camera',
+     'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'869db738-274d-4bca-ac4f-a0b0d39db232', 'group_id':micds_gid, 'name':'micds',
+     'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds2_camera',
+     'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'454ce6b1-2a0d-44eb-b85d-847d39150dd6', 'group_id':micds_gid, 'name':'micds',
+     'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds3_camera',
+     'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'b3620a50-ab7f-480e-ae97-ad82966ee2ec', 'group_id':micds_gid, 'name':'micds',
+     'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds4_camera',
+     'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'ce81f410-9ff3-4e70-b05d-5b2e39d8331d', 'group_id':micds_gid, 'name':'micds',
+     'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds5_camera',
      'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
     ]
 
@@ -47,6 +61,8 @@ person_groups_table = [
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'mars', 'group_id':mars_gid},
     {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'micds', 'group_id':micds_gid},
+    {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 
+     'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'slip', 'group_id':slip_gid},
     ]
 
 person_table = [
