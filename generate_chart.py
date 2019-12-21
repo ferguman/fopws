@@ -8,6 +8,9 @@ from sys import exc_info
 
 import pygal
 import requests
+from DbConnection import DbConnection
+from config.config import dbconfig
+from nacl_fop import decrypt_dict_vals
 
 from logger import get_sub_logger
 
@@ -109,9 +112,6 @@ def generate_chart_from_couchdb(data_type, couchdb_db_name, chart_info, ct_offse
         return {'bytes':None}
 
 
-from DbConnection import DbConnection
-from config.config import dbconfig
-from nacl_fop import decrypt_dict_vals
 def generate_chart_from_postgresql(device_uuid, data_type, chart_info, ct_offset):
     """ data_type is a string formatted as: subject_attribute """
 

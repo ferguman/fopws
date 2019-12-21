@@ -1,12 +1,13 @@
+from datetime import datetime, timedelta
 from functools import wraps
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
 from os import path 
 from sys import exc_info
 from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
-                  session
+                  session, make_response
 from flask_cors import CORS
 import requests
 import psycopg2
@@ -66,7 +67,8 @@ getLogger('flask_cors').level =  INFO
 getLogger('flask_cors').addHandler(get_the_fopdcw_log_handler())
 
 #TODO: move this stuff to the configuration file
-# this works for development, i.e serving the web client from my laptop: cors = CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
+# this works for development, i.e serving the web client from my laptop: cors = 
+#      CORS(app, supports_credentials = True, origins =['http://localhost:8080', 'http://localhost'])
 cors = CORS(app, supports_credentials = True, origins =['http:192.168.4.247', 'http://localhost:8080', 'http://localhost', 'http://fop3.urbanspacefarms.com:5000'])
 
 # Decorate URL route functions with this function in order to restrict access
@@ -274,6 +276,7 @@ def get_chart_list(system_uuid):
         logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False, 'chart_list':[{}]})
 
+from data import get_device_data
 
 @app.route('/api/get_data_zip/<system_uuid>/<start_date>/<end_date>')
 @enforce_login
@@ -282,7 +285,6 @@ def get_data_zip(system_uuid, start_date, end_date):
 
     #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
     logger.info('{}: api/get_data_zip/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, start_date, end_date))
-
 
     try:
 
@@ -293,14 +295,30 @@ def get_data_zip(system_uuid, start_date, end_date):
                      grow_system_devices as gsd on gs.uuid = gsd.grow_system_uuid where 
                      gs.uuid = %s"""
      
-
             cur.execute(sql, (system_uuid,))
             device_uuid = cur.fetchone()[0]
        
         logger.info('fopd device id {}'.format(device_uuid))
-       
-        return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
-        #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
+
+        out_fp = StringIO() 
+        flask_out_fp = BytesIO()
+
+        # Fill out_fp with csv formatted lines containing all the devices's observerations
+        # Adjust filter dates to UTC times.
+        
+        #- cur.execute(q, (device_uuid, start_date, datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)))
+        #- session['user']['ct_offset']
+        #- start_date_utc = datetime.strptime(start_date, '%Y-%m-%d') - timedelta(hours=session['user']['ct_offset']) 
+        #- end_date_utc = (datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)) - timedelta(hours=session['user']['ct_offset'])
+        if get_device_data(out_fp, device_uuid, start_date, end_date, session['user']['ct_offset']):
+            # Flask wants a byte file so transfer out_fp to flask_out_fp
+            flask_out_fp.write(out_fp.getvalue().encode('utf-8')) 
+            flask_out_fp.seek(0)
+            out_fp.close()
+
+            return send_file(flask_out_fp, mimetype='text/csv', as_attachment=True, attachment_filename='data.csv')
+        else:
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
     except:
         logger.error('in /api/get_data_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
@@ -339,6 +357,7 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
 
         s3_file_names = get_s3_file_names(camera_uuid, images_per_day, start_date, end_date) 
 
+        # TODO: Retrun a zip archive containing a file that contains text indicating that there are no files available.
         if len(s3_file_names) == 0:
             logger.warning('no images found')
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
