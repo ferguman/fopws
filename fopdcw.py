@@ -597,7 +597,10 @@ def doser():
 
     return render_template('doser_2.html')
 
-# Django currently limits usernames to 150 characters
+# This code assumes users are stored in a table created by Django as
+# per the Django method of hashing passwords. However
+# don't be confused: this is a Flask application.
+# Django currently limits usernames to 150 characters.
 #
 def authenticate(username, password, cur):
 

@@ -17,17 +17,18 @@
 # Some Group Id's explicitly declared for handy reference
 mars_gid = '30d78ab9-611d-4c44-8bec-a5a91240e1e6'
 micds_gid = '09e463e7-cdbf-410c-bc2a-5b0691bffdbf' 
-usf_gid = 'b456f6ec-6293-4077-9ad1-f1f1b01524d6' 
-slsc_gid = '37cad361-cc28-4730-b676-7a170cf3a37a' 
+sare_gid = 'cdb76a7e-e454-437e-ba8c-eb3f254beb75'
 slip_gid = 'ee288832-0017-4976-ac52-b670bf6c7b55'
+slsc_gid = '37cad361-cc28-4730-b676-7a170cf3a37a' 
+usf_gid = 'b456f6ec-6293-4077-9ad1-f1f1b01524d6' 
 
 device_permissions_table = [
     {'device_uuid':'f38dc0c8-658a-4acd-b1c5-c66e17287027', 'group_id':usf_gid, 'name':'usf',
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'local_name':'fc3',
-     'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':False}},
+     'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':True}},
     {'device_uuid':'dda50a41-f71a-4b3e-aeea-2b58795d2c99', 'group_id':usf_gid, 'name':'usf',
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'local_name':'fc1 camera',
-     'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':False}},
+     'organization':{'admin':True, 'view':True}, 'group':{'admin':False, 'view':True}},
     {'device_uuid':'80eb0af1-bb85-41ef-9daf-633279e913bb', 'group_id':mars_gid, 'name':'mars',
      'organization_uuid':'90e22482-087b-484c-8f89-8e88c02164b8', 'local_name':'slsc mvp camera',
      'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
@@ -46,6 +47,9 @@ device_permissions_table = [
     {'device_uuid':'ce81f410-9ff3-4e70-b05d-5b2e39d8331d', 'group_id':micds_gid, 'name':'micds',
      'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds5_camera',
      'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'ff985248-4456-41c1-bf52-ec175cfec287', 'group_id':usf_gid, 'name':'usf',
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'local_name':'sludev1_camera',
+     'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
     ]
 
 person_groups_table = [
@@ -63,6 +67,12 @@ person_groups_table = [
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'micds', 'group_id':micds_gid},
     {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'slip', 'group_id':slip_gid},
+    {'person_uuid':'04f66e90-b537-471c-8c11-76c6d0f19caf', 'name':'james', 
+     'organization_uuid':'45bf589064c643739780b100eab0baee', 'group_name':'usf', 'group_id':usf_gid},
+    {'person_uuid':'c91cc7b0-9113-49e0-99e1-4f634a8c9aa3', 'name':'jim', 
+     'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'usf', 'group_id':usf_gid},
+    {'person_uuid':'299ca963-49c7-487f-8adc-13cb39d28e18', 'name':'phil', 
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'usf', 'group_id':usf_gid},
     ]
 
 person_table = [
@@ -74,6 +84,12 @@ person_table = [
      'organization_uuid':'90e22482-087b-484c-8f89-8e88c02164b8'},
     {'person_uuid':'034a658b-0bce-4214-9276-eebd4b574bf9', 
      'organization_uuid':'18ffe759-bf6f-4f34-9a60-7c43d48a7fb0'},
+    {'person_uuid':'04f66e90-b537-471c-8c11-76c6d0f19caf', 
+     'organization_uuid':'45bf589064c643739780b100eab0baee'},
+    {'person_uuid':'c91cc7b0-9113-49e0-99e1-4f634a8c9aa3', 
+     'organization_uuid':'dac952cd-8968-4c26-a508-813861015995'},
+    {'person_uuid':'299ca963-49c7-487f-8adc-13cb39d28e18', 
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf'},
     ]
 
 

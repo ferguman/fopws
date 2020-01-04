@@ -83,7 +83,6 @@ def check_password_hash(django_hash, password) -> bool:
 
         # Seperate the Django hashing mechanism parts. Note that the hash parts are stored as:
         # (hash_type)$(iterations)$(salt)$(b64_hash)
-        #- hash_parts = django_hash.split('$', 4) 
         hash_parts = django_hash.split('$', 3) 
         assert (hash_parts != None and len(hash_parts) == 4), 'incorrect djanga hash'
 
@@ -94,7 +93,6 @@ def check_password_hash(django_hash, password) -> bool:
         calculated_hash = pbkdf2(password, hash_parts[2] , int(hash_parts[1]), dklen=0, digest=None)
   
         return calculated_hash == b64decode(hash_parts[3]) 
-
 
     except:
         logger.error('hash match error: {}, {}'.format(exc_info()[0], exc_info()[1]))
