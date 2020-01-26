@@ -13,6 +13,7 @@ import requests
 import psycopg2
 
 from DbConnection import DbConnection
+from data import get_device_data, get_device_data_json
 from django_authenticator import check_password 
 from generate_chart import generate_chart
 from jose_fop import make_image_request_jwt
@@ -276,15 +277,45 @@ def get_chart_list(system_uuid):
         logger.error('error {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False, 'chart_list':[{}]})
 
-from data import get_device_data
 
-@app.route('/api/get_data_zip/<system_uuid>/<start_date>/<end_date>')
+@app.route('/api/get_data_json/<system_uuid>/<start_date>/<end_date>')
 @enforce_login
-def get_data_zip(system_uuid, start_date, end_date):
+def get_data_json(system_uuid, start_date, end_date):
+
+    #TODO - verify that the user has the privliges to see the contents of the zip file. 
+    logger.info('{}: api/get_data_json/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, start_date, end_date))
+
+    try:
+        # Get the fopd device UUID 
+        with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
+
+            sql = """select device_uuid from grow_system as gs inner join
+                     grow_system_devices as gsd on gs.uuid = gsd.grow_system_uuid where 
+                     gs.uuid = %s"""
+     
+            cur.execute(sql, (system_uuid,))
+            # Get the 1st device id returned from the grow system devices list
+            device_uuid = cur.fetchone()[0]
+
+        result = get_device_data_json(device_uuid, start_date, end_date, session['user']['ct_offset'])
+
+        if result:
+            return result
+        else:
+            #TODO: Need a different error message here than the s3_error
+            return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+    except:
+        logger.error('in /api/get_data_json route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
+
+
+@app.route('/api/get_data_csv/<system_uuid>/<start_date>/<end_date>')
+@enforce_login
+def get_data_csv(system_uuid, start_date, end_date):
     #TODO - verify that the user has the privliges to see the contents of the zip file. 
 
     #TODO - I bet this could moved to a decorator or hell put it in enforce_login!
-    logger.info('{}: api/get_data_zip/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, start_date, end_date))
+    logger.info('{}: api/get_data_csv/{}/{}/{}'.format(session['user']['nick_name'], system_uuid, start_date, end_date))
 
     try:
 
@@ -304,12 +335,7 @@ def get_data_zip(system_uuid, start_date, end_date):
         flask_out_fp = BytesIO()
 
         # Fill out_fp with csv formatted lines containing all the devices's observerations
-        # Adjust filter dates to UTC times.
         
-        #- cur.execute(q, (device_uuid, start_date, datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)))
-        #- session['user']['ct_offset']
-        #- start_date_utc = datetime.strptime(start_date, '%Y-%m-%d') - timedelta(hours=session['user']['ct_offset']) 
-        #- end_date_utc = (datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)) - timedelta(hours=session['user']['ct_offset'])
         if get_device_data(out_fp, device_uuid, start_date, end_date, session['user']['ct_offset']):
             # Flask wants a byte file so transfer out_fp to flask_out_fp
             flask_out_fp.write(out_fp.getvalue().encode('utf-8')) 
@@ -318,10 +344,11 @@ def get_data_zip(system_uuid, start_date, end_date):
 
             return send_file(flask_out_fp, mimetype='text/csv', as_attachment=True, attachment_filename='data.csv')
         else:
+            #TODO: Need a different error message here than the s3_error
             return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
 
     except:
-        logger.error('in /api/get_data_zip route: {}, {}'.format(exc_info()[0], exc_info()[1]))
+        logger.error('in /api/get_data_csv route: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
         #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 

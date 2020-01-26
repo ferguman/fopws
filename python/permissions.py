@@ -21,6 +21,7 @@ sare_gid = 'cdb76a7e-e454-437e-ba8c-eb3f254beb75'
 slip_gid = 'ee288832-0017-4976-ac52-b670bf6c7b55'
 slsc_gid = '37cad361-cc28-4730-b676-7a170cf3a37a' 
 usf_gid = 'b456f6ec-6293-4077-9ad1-f1f1b01524d6' 
+ghv_gid = 'a4839091-91e3-41d9-9338-d8fabc0cdc02'
 
 device_permissions_table = [
     {'device_uuid':'f38dc0c8-658a-4acd-b1c5-c66e17287027', 'group_id':usf_gid, 'name':'usf',
@@ -47,7 +48,7 @@ device_permissions_table = [
     {'device_uuid':'ce81f410-9ff3-4e70-b05d-5b2e39d8331d', 'group_id':micds_gid, 'name':'micds',
      'organization_uuid':'f873cc7f-7ee4-4e88-8357-e308126974ff', 'local_name':'micds5_camera',
      'organization':{'admin':False, 'view':True}, 'group':{'admin':True, 'view':True}},
-    {'device_uuid':'ff985248-4456-41c1-bf52-ec175cfec287', 'group_id':usf_gid, 'name':'usf',
+    {'device_uuid':'ff985248-4456-41c1-bf52-ec175cfec287', 'group_id':ghv_gid, 'name':'ghv',
      'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'local_name':'sludev1_camera',
      'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
     ]
@@ -72,7 +73,9 @@ person_groups_table = [
     {'person_uuid':'c91cc7b0-9113-49e0-99e1-4f634a8c9aa3', 'name':'jim', 
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'usf', 'group_id':usf_gid},
     {'person_uuid':'299ca963-49c7-487f-8adc-13cb39d28e18', 'name':'phil', 
-     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'usf', 'group_id':usf_gid},
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'ghv', 'group_id':ghv_gid},
+    {'person_uuid':'ad6ef000-80a1-4389-93c8-ae770dbfaf4f', 'name':'sluhdev', 
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'ghv', 'group_id':ghv_gid},
     ]
 
 person_table = [
@@ -89,6 +92,8 @@ person_table = [
     {'person_uuid':'c91cc7b0-9113-49e0-99e1-4f634a8c9aa3', 
      'organization_uuid':'dac952cd-8968-4c26-a508-813861015995'},
     {'person_uuid':'299ca963-49c7-487f-8adc-13cb39d28e18', 
+     'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf'},
+    {'person_uuid':'ad6ef000-80a1-4389-93c8-ae770dbfaf4f', 
      'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf'},
     ]
 
