@@ -411,6 +411,8 @@ def get_zip(system_uuid, images_per_day, start_date, end_date):
         return send_from_directory(path.join(app.root_path, 'static'), 's3_error.jpg', mimetype='image/png')
         #- return send_from_directory('/static', 's3_error.jpg', mimetype='image/png')
 
+# TODO - add start and end date to charts so user can chart over more than just one day.
+#        see if Flask supports optional parameters
 @app.route('/api/chart/<data_type>/<grow_system_guid>')
 @enforce_login
 def chart(data_type, grow_system_guid):

@@ -51,6 +51,9 @@ device_permissions_table = [
     {'device_uuid':'ff985248-4456-41c1-bf52-ec175cfec287', 'group_id':ghv_gid, 'name':'ghv',
      'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'local_name':'sludev1_camera',
      'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
+    {'device_uuid':'3f5aafe6-27ac-4a16-9b2a-d1ebbb8daee3', 'group_id':usf_gid, 'name':'usf',
+     'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'local_name':'doser1',
+     'organization':{'admin':True, 'view':True}, 'group':{'admin':True, 'view':True}},
     ]
 
 person_groups_table = [

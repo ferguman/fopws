@@ -27,4 +27,3 @@ def send_text(text_number, body):
 
         logger.error('send_text: exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return {'error': True}
-
