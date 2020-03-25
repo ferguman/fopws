@@ -1,3 +1,6 @@
+# FYI: Look at https://morioh.com/p/1888b256c69c?f=5c22e47440738156a7078a19 for code on how to send a 
+#      WhatsApp message.
+# 
 from sys import exc_info
 
 from twilio.rest import Client
