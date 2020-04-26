@@ -196,6 +196,15 @@ def get_reset_code(user_name):
         logger.error('api/get_reset_code exception: {}, {}'.format(exc_info()[0], exc_info()[1]))
         return json.dumps({'r':False, 'logged_in':None})
 
+@app.route('/api/register', methods=['POST'])
+def register():
+
+    # TODO - Need to finish the registration algorithm
+    #- registration_code = request.get_json(force=True)
+    #- logger.info('registration code: {}'.format(registration_code))
+    logger.info('registration code: {}'.format('foobar'))
+    return json.dumps({'jwt_secret':'you wish!', 'mqtt_password':'in your dreams'})
+    
 
 @app.route("/api/login", methods=['POST'])
 def process_api_login():

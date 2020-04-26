@@ -163,10 +163,10 @@ def get_device_config_item(device_id: 'guid', item_name: str) -> str:
    try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
             sql = """select configuration from device where guid = %s;"""
-	    cur.execute(sql, (device_id, ))
-	    if cur.rowcount != 1:
-	        logger.error('ERROR in get_device_config_item: 0 or more than one devices found with guid {}'.format(device_id))
-		return None
+            cur.execute(sql, (device_id, ))
+            if cur.rowcount != 1:
+                logger.error('ERROR in get_device_config_item: 0 or more than one devices found with guid {}'.format(device_id))
+                return None
 
             return cur.fetchone()[0][item_name] 
 
