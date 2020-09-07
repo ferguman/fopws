@@ -9,6 +9,7 @@ from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session, make_response
 from flask_cors import CORS
+from flask_socketio import SocketIO, send, emit
 import requests
 import psycopg2
 
@@ -29,7 +30,6 @@ from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for
 ##############
 # TODO: Build in a Web Socket interface for realtime control of fopd devices.
 #       See: https://hacks.mozilla.org/2019/10/firefoxs-new-websocket-inspector/
-from flask_socketio import SocketIO
 ##############
 
 class FopwFlask(Flask):
@@ -250,6 +250,29 @@ def reset_password():
     except Exception as err:
         logger.error('api/reset_password exception: {}, {}, {}'.format(exc_info()[0], exc_info()[1], err))
         return json.dumps({'r':False, 'message':'an error occurred'})
+
+# #########################################################################
+# Web Socket event handlers go here.
+
+# message is a keyword and indicates text style message.
+# Use emit for named events.
+@enforce_login
+@socketio.on('command')
+def handle_message(message):
+    logger.info('got here')
+    emit('response', 'type help for help')
+    logger.info('Received web socket message {} from {}'.format(message, session['user']['user_name']))
+
+# Return false to reject the connection or raise a ConnectionRefusedError
+# TODO - Need to wrap security around the initial connection attempt.
+@socketio.on('connect')
+def test_connect():
+    logger.info('connection request received.')
+    #+ emit('my response', {'data': 'Connected'})
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
 
 # #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
@@ -520,8 +543,10 @@ def get_crops():
     try:
         with DbConnection(decrypt_dict_vals(dbconfig, {'password'})) as cur:
 
-            sql = """select grow_batch_id, g.start_date, 'germination' as status, s.common_name, s.variety from 
-                     germination as g inner join seed_lot as s on g.seed_lot_id = s.id
+            sql = """select grow_batch_id, g.start_date, 'germination' as status, v.common_name, v.species from germination as g 
+                     inner join grow_batch as gb on g.grow_batch_id = gb.id
+                     inner join seed_lot as sl on gb.seed_lot_id = sl.id
+                     inner join variety as v on sl.variety_id = v.id
                      union
                      select 100, '20190620' as start_date, 'stage 2' as status, 'basil' as common_name, 'Genovese' as variety;"""
 

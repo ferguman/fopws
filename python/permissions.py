@@ -79,6 +79,8 @@ person_groups_table = [
      'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'ghv', 'group_id':ghv_gid},
     {'person_uuid':'ad6ef000-80a1-4389-93c8-ae770dbfaf4f', 'name':'sluhdev', 
      'organization_uuid':'dafdea50-85d6-460a-8dd6-e79d978c0fcf', 'group_name':'ghv', 'group_id':ghv_gid},
+    {'person_uuid':'4b108cf5-6e6b-475c-8044-f009b90c1dd0', 'name':'ferguman', 
+     'organization_uuid':'dac952cd-8968-4c26-a508-813861015995', 'group_name':'ghv', 'group_id':ghv_gid},
     ]
 
 person_table = [

@@ -7,9 +7,9 @@ __pycache__/
 venv/
 dist/
 fopdw/
-log/*.*
-log/*
-!log/.gitkeep
+logs/*.*
+logs/*
+!logs/.gitkeep
 static/
 !static/s3_error.jpg
 !static/graph_error.jpg
