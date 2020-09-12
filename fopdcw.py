@@ -4,6 +4,7 @@ from io import BytesIO, StringIO
 import json
 from os import path 
 from sys import exc_info
+import threading
 from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
@@ -253,6 +254,7 @@ def reset_password():
 
 # #########################################################################
 # Web Socket event handlers go here.
+from python.repl import start, uptime
 
 # message is a keyword and indicates text style message.
 # Use emit for named events.
@@ -260,19 +262,28 @@ def reset_password():
 @socketio.on('command')
 def handle_message(message):
     logger.info('got here')
-    emit('response', 'type help for help')
+
+    #+ Send the prompt back
+    #+ emit('response', '{}'.format(request.sid)[:7] + ':')
+
+    if message == 'info':
+        emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, session['repl'], request.namespace, request.event))
+
     logger.info('Received web socket message {} from {}'.format(message, session['user']['user_name']))
+    emit('response', 'ok')
 
 # Return false to reject the connection or raise a ConnectionRefusedError
 # TODO - Need to wrap security around the initial connection attempt.
 @socketio.on('connect')
-def test_connect():
-    logger.info('connection request received.')
+def connect():
+    logger.info('socket.io client connected.')
+    # Initialize a repl and inject its state into the session.
+    session['repl'] = start() 
     #+ emit('my response', {'data': 'Connected'})
 
 @socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
+def disconnect():
+    print('socket.io client disconnected')
 
 # #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
