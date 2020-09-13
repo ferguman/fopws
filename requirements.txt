@@ -20,6 +20,7 @@ Jinja2==2.10.1
 jmespath==0.9.3
 MarkupSafe==1.0
 monotonic==1.5
+paho-mqtt==1.5.0
 psycopg2==2.7.5
 pyasn1==0.4.4
 pycparser==2.19

@@ -254,7 +254,7 @@ def reset_password():
 
 # #########################################################################
 # Web Socket event handlers go here.
-from python.repl import start, uptime
+from python.repl import mqtt_connect, start, mqtt_sub, uptime
 
 # message is a keyword and indicates text style message.
 # Use emit for named events.
@@ -263,12 +263,18 @@ from python.repl import start, uptime
 def handle_message(message):
     logger.info('got here')
 
-    #+ Send the prompt back
-    #+ emit('response', '{}'.format(request.sid)[:7] + ':')
 
     if message == 'info':
         emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, session['repl'], request.namespace, request.event))
 
+    if message == 'mqtt_connect':
+        mqtt_connect()
+
+    if message == 'mqtt_sub':
+       mqtt_sub()
+
+    # Send the prompt back
+    emit('response', '{}'.format(request.sid)[:7] + ': ' + message)
     logger.info('Received web socket message {} from {}'.format(message, session['user']['user_name']))
     emit('response', 'ok')
 
