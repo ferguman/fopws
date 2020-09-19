@@ -254,42 +254,46 @@ def reset_password():
 
 # #########################################################################
 # Web Socket event handlers go here.
-from python.repl import mqtt_connect, start, mqtt_sub, uptime
+from python.repl import start
+
+#- repl = None
 
 # message is a keyword and indicates text style message.
 # Use emit for named events.
 @enforce_login
 @socketio.on('command')
 def handle_message(message):
-    logger.info('got here')
-
-
-    if message == 'info':
-        emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, session['repl'], request.namespace, request.event))
-
-    if message == 'mqtt_connect':
-        mqtt_connect()
-
-    if message == 'mqtt_sub':
-       mqtt_sub()
 
     # Send the prompt back
     emit('response', '{}'.format(request.sid)[:7] + ': ' + message)
     logger.info('Received web socket message {} from {}'.format(message, session['user']['user_name']))
+
+    # Interpret the message
+    if message == 'info':
+        r = 'start time: {}'.format(session['repl']['start_time'])
+        r = r + '\n' +  'up time: {}'.format(session['repl']['up_time']())
+        logger.info('####### info: {}'.format(r))
+        # NOTE - I had issues with two emit statements in consecutive order.
+        #        The second statement did not seem to have any effect. It was
+        #        if it was ignored. No run time error. No response received at the
+        #        client. No nothing.
+        emit('response', r)
+        # emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, request['repl'], request.namespace, request.event))
+    else:
+        emit('response', session['repl']['apply'](message))
+
     emit('response', 'ok')
 
 # Return false to reject the connection or raise a ConnectionRefusedError
-# TODO - Need to wrap security around the initial connection attempt.
 @socketio.on('connect')
 def connect():
-    logger.info('socket.io client connected.')
     # Initialize a repl and inject its state into the session.
-    session['repl'] = start() 
-    #+ emit('my response', {'data': 'Connected'})
+    session['repl'] = start(request, socketio.emit) 
+    logger.info('####################### socket.io client connected.')
 
 @socketio.on('disconnect')
 def disconnect():
-    print('socket.io client disconnected')
+    logger.info('socket.io client disconnected')
 
 # #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
