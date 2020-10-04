@@ -6,11 +6,12 @@ from os import path
 from sys import exc_info
 import threading
 from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
+from threading import Lock
 
 from flask import flash, Flask, render_template, request, Response, send_file, send_from_directory,\
                   session, make_response
 from flask_cors import CORS
-from flask_socketio import SocketIO, send, emit
+from flask_socketio import Namespace, SocketIO, send, emit
 import requests
 import psycopg2
 
@@ -25,6 +26,9 @@ from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission, get_user_groups
 from python.twilio_fop import send_text
+from python.repl import start_repl
+
+#- from python.socketio_fop import MyNameSpace
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
@@ -56,7 +60,10 @@ app = FopwFlask(__name__)
 #        become invalid after the restart.
 #
 app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
+
+# Inject Flask app into the socketio object. 
 socketio = SocketIO(app)
+#- socketio.on_namespace(MyNameSpace('/'))
 
 # This function has the side effect of injecting the fopdcw log handler into the 
 # flask.app logger.
@@ -254,9 +261,38 @@ def reset_password():
 
 # #########################################################################
 # Web Socket event handlers go here.
-from python.repl import start
+thread = None
+thread_lock = Lock()
 
-#- repl = None
+class MyNameSpace(Namespace):
+
+    #TODO - Need to figure out a way to share repl globals so repl can be invoked by
+    #       by on_command.  See https://stackoverflow.com/questions/53379228/flask-socketio-how-to-share-data-between-python-thread-and-socketio-start-backg
+
+    @enforce_login
+    def on_connect(self):
+        global thread
+        with thread_lock:
+            if thread is None:
+                thread = socketio.start_background_task(start_repl)
+        logger.info('SocketIO connected as client {}'.format(request.sid))
+        emit('my_response', {'data': 'Connected', 'uptime': 0})
+
+    @enforce_login
+    def on_disconnect(self):
+        logger.info('SocketIO client {} disconnected'.format(request.sid))
+        #- print('Client disconnected', request.sid)
+
+    @enforce_login
+    def on_command(self, message):
+        #- session['receive_count'] = session.get('receive_count', 0) + 1
+        logger.info('SocketIO command {} received'.format(message))
+        emit('response', message)
+        #-     {'data': message['data'], 'count': 'foobar'})
+
+socketio.on_namespace(MyNameSpace('/'))
+"""-
+from python.repl import start
 
 # message is a keyword and indicates text style message.
 # Use emit for named events.
@@ -271,29 +307,36 @@ def handle_message(message):
     # Interpret the message
     if message == 'info':
         r = 'start time: {}'.format(session['repl']['start_time'])
-        r = r + '\n' +  'up time: {}'.format(session['repl']['up_time']())
+        r = r + '\n' +  'up time: {}'.format(session['repl']['up_time'](session['repl']))
+        r = r + '\n' + 'room/sid: {}'.format(request.sid)
+
         logger.info('####### info: {}'.format(r))
         # NOTE - I had issues with two emit statements in consecutive order.
         #        The second statement did not seem to have any effect. It was
         #        if it was ignored. No run time error. No response received at the
         #        client. No nothing.
         emit('response', r)
+        emit('response', 'ok')
         # emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, request['repl'], request.namespace, request.event))
     else:
-        emit('response', session['repl']['apply'](message))
+        result = session['repl']['apply'](session['repl'], emit, message)
+        emit('response', result)
 
-    emit('response', 'ok')
+    # emit('response', 'ok')
 
 # Return false to reject the connection or raise a ConnectionRefusedError
 @socketio.on('connect')
 def connect():
     # Initialize a repl and inject its state into the session.
     session['repl'] = start(request, socketio.emit) 
+    session['repl']['socketio'] = socketio
+    session['repl']['sid'] = request.sid
     logger.info('####################### socket.io client connected.')
 
 @socketio.on('disconnect')
 def disconnect():
     logger.info('socket.io client disconnected')
+"""
 
 # #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
