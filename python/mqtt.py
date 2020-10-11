@@ -6,48 +6,18 @@ import paho.mqtt.client as mqtt
 from sys import exc_info
 from time import time
 
-logger = get_sub_logger('repl')
-
-#- repl_state = {}
-#- repl_state['start_time'] = None 
-
-"""-
-def background_thread():
-    # Example of how to send server generated events to clients.
-    count = 0
-    while True:
-        socketio.sleep(10)
-        count += 1
-        socketio.emit('my_response',
-                      {'data': 'Server generated event', 'count': count},
-                      namespace='/test')
-"""
-
-def start_repl():
-    repl_state = {}
-    logger.info('starting repl')
-    repl_state['start_time'] = time()
-    repl_state['apply'] = apply_cmd
-    while True:
-        socketio.sleep(10)
-        socketio.emit('my_response',
-                      {'data': 'Server generated event', 'uptime': uptime(repl_state)},
-                      namespace='/repl')
+logger = get_sub_logger('mqtt')
 
 def up_time(repl_state):
    return time() - repl_state['start_time']
 
-def make_on_message_handler(repl_state):
-   
+def make_on_message_handler(socketio):
+   logger.info('making message handler') 
+   socketio.emit('response', 'making message handler')
    def on_message(client, userdata, message):
       msg = 'MQTT: userdata: {}, payload: {}'.format(userdata, message.payload.decode('utf-8'))
       logger.info(msg)
-      #TODO - need to send this back through the socket io connection to the listener
-      #- repl_state['emit']('response', msg)
-      #- repl['emit']('response', 'foobar')
-      #- repl_state['socketio'].emit('response', msg, repl_state['sid'])
-      #- repl_state['socketio'].emit('response', repl_state['sid'], {'data':msg})
-      repl_state['socketio'].emit('response', {'data':msg}, room=repl_state['sid'])
+      socketio.emit('response', msg)
 
    return on_message 
 
@@ -55,20 +25,25 @@ def on_subscribe(mqtt, userdata, mid, granted_qos):
     msg = 'MQTT Subscribed, data: {}, mid: {}'.format(userdata, mid)
     logger.info(msg)
 
+"""-
 def mqtt_subscribe_all(repl_state, emit):
    # subscribe to all incoming topics
    repl_state['mqtt_client'].subscribe('#', 2)
    msg = 'subscribing to all MQTT topics'
    emit('response', msg)
    logger.info(msg)
+"""
 
-def mqtt_connect(emit, repl_state):
+def mqtt_connect(*args):
+   """ args[0] = socketio
+       args[1] = repl_state """
    try:
      
-      emit('response', 'connecting to mqtt..')
+      #- emit('response', 'connecting to mqtt..')
+      args[0].emit('response', 'connecting to mqtt..')
 
-      mqtt_client = mqtt.Client('foobar')
-      mqtt_client.on_message = make_on_message_handler(repl_state)
+      mqtt_client = mqtt.Client('fopws')
+      mqtt_client.on_message = make_on_message_handler(args[0])
       mqtt_client.on_subscribe = on_subscribe
       
       # Enforce tls certificate checking 
@@ -81,11 +56,23 @@ def mqtt_connect(emit, repl_state):
       # Start the MQTT client - loop_start causes the mqtt_client to spawn a background thread which
       #                         handles the mqtt commuications.  The loop_start call thus returns
       #                         control to this thread immediately.
+
+      args[1]['mqtt_client'] = mqtt_client
+      logger.info('starting an mqtt thread...')
+      #- mqtt_client.loop_forever()
       mqtt_client.loop_start()
 
+      # Camp out forever in order to keep Gunicorn happy
+      while True:
+          args[0].sleep(10)
+          args[0].emit('mqtt thread alive')
+      
+      """-
+      mqtt_client.loop_start()
       emit('response', 'connected as foobar')
       logger.info('started MQTT client')
       return mqtt_client
+      """
 
    except:
       logger.error('Unable to create MQTT client: {} {}'.format(exc_info()[0], exc_info()[1]))

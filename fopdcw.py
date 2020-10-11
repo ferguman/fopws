@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from functools import wraps
 from io import BytesIO, StringIO
 import json
@@ -26,9 +26,7 @@ from python.boto3_fop import S3Session
 from python.image import get_image_file_v2, get_newest_image_uuid, get_s3_file_names
 from python.permissions import has_permission, get_user_groups
 from python.twilio_fop import send_text
-from python.repl import start_repl
-
-#- from python.socketio_fop import MyNameSpace
+from python.mqtt import mqtt_connect 
 
 from config.config import dbconfig, flask_app_secret_key_b64_cipher, fop_url_for_get_image
 
@@ -63,7 +61,6 @@ app.secret_key = decrypt(flask_app_secret_key_b64_cipher)
 
 # Inject Flask app into the socketio object. 
 socketio = SocketIO(app)
-#- socketio.on_namespace(MyNameSpace('/'))
 
 # This function has the side effect of injecting the fopdcw log handler into the 
 # flask.app logger.
@@ -263,80 +260,75 @@ def reset_password():
 # Web Socket event handlers go here.
 thread = None
 thread_lock = Lock()
+mqtt_thread = None
+mqtt_thread_lock = Lock()
+
+repl_state = {}
+
+def apply(message):
+    global repl_state
+    logger.info('message received: {}'.format(message))
+    if message == 'mqtt':
+        # TODO - See https://flask-mqtt.readthedocs.io/en/latest/index.html for an approach that might be better.
+        #        As of 10/11/2020 I can't get this current code to succesfully show subscribed messges ont he vue
+        #        client.
+        # Add code to keep from creating multiple mqtt threads
+        mqtt_thread  = socketio.start_background_task(mqtt_connect, socketio, repl_state)
+        return 'mqtt connected'
+    elif message == 'sub':
+        repl_state['mqtt_client'].subscribe('#', 2)
+        return 'subscribed to all mqtt topics'
+    else:
+        return 'unknown commnd'
+
+def start_repl(*args):
+    global repl_state
+    # Socketio can pass in *args as well as **kwargs
+    # logger.info(args[0])
+    repl_state['start_time'] = time()
+    repl_state['current_time'] = time()
+    logger.info('repl state created')
+    while True:
+        socketio.sleep(10)
+        #- logger.info("heartbeat")
+        repl_state['current_time'] = time()
+        #- socketio.emit('response', 'heartbeat')
+        """-
+        socketio.emit('response',
+                      {'data': 'Server generated event', 'uptime': uptime(repl_state)},
+                      namespace='/')
+        """
 
 class MyNameSpace(Namespace):
 
-    #TODO - Need to figure out a way to share repl globals so repl can be invoked by
-    #       by on_command.  See https://stackoverflow.com/questions/53379228/flask-socketio-how-to-share-data-between-python-thread-and-socketio-start-backg
-
     @enforce_login
     def on_connect(self):
+        logger.info('on_connect triggered')
         global thread
         with thread_lock:
             if thread is None:
+                logger.info('No thread exist, will create a new one.')
+                # See __init__.py in the sockectio project for details of this function
+                # One can pass in args if necessary -> thread = socketio.start_background_task(start_repl, 'hooya')
                 thread = socketio.start_background_task(start_repl)
+            else:
+               logger.info('thread already exists, skipping new thread creation.')
         logger.info('SocketIO connected as client {}'.format(request.sid))
-        emit('my_response', {'data': 'Connected', 'uptime': 0})
+        #- emit('response', {'data': 'Connected', 'uptime': 0})
+        emit('response', 'connected')
 
     @enforce_login
     def on_disconnect(self):
         logger.info('SocketIO client {} disconnected'.format(request.sid))
-        #- print('Client disconnected', request.sid)
 
     @enforce_login
     def on_command(self, message):
-        #- session['receive_count'] = session.get('receive_count', 0) + 1
         logger.info('SocketIO command {} received'.format(message))
-        emit('response', message)
+        emit('response', apply(message))
+        #- emit('response', message)
         #-     {'data': message['data'], 'count': 'foobar'})
 
 socketio.on_namespace(MyNameSpace('/'))
-"""-
-from python.repl import start
-
-# message is a keyword and indicates text style message.
-# Use emit for named events.
-@enforce_login
-@socketio.on('command')
-def handle_message(message):
-
-    # Send the prompt back
-    emit('response', '{}'.format(request.sid)[:7] + ': ' + message)
-    logger.info('Received web socket message {} from {}'.format(message, session['user']['user_name']))
-
-    # Interpret the message
-    if message == 'info':
-        r = 'start time: {}'.format(session['repl']['start_time'])
-        r = r + '\n' +  'up time: {}'.format(session['repl']['up_time'](session['repl']))
-        r = r + '\n' + 'room/sid: {}'.format(request.sid)
-
-        logger.info('####### info: {}'.format(r))
-        # NOTE - I had issues with two emit statements in consecutive order.
-        #        The second statement did not seem to have any effect. It was
-        #        if it was ignored. No run time error. No response received at the
-        #        client. No nothing.
-        emit('response', r)
-        emit('response', 'ok')
-        # emit('response', 'uptime: {}\nsid: {}\nrepl: {}\nnamespace: {}\nevent: {}'.format(uptime(), request.sid, request['repl'], request.namespace, request.event))
-    else:
-        result = session['repl']['apply'](session['repl'], emit, message)
-        emit('response', result)
-
-    # emit('response', 'ok')
-
-# Return false to reject the connection or raise a ConnectionRefusedError
-@socketio.on('connect')
-def connect():
-    # Initialize a repl and inject its state into the session.
-    session['repl'] = start(request, socketio.emit) 
-    session['repl']['socketio'] = socketio
-    session['repl']['sid'] = request.sid
-    logger.info('####################### socket.io client connected.')
-
-@socketio.on('disconnect')
-def disconnect():
-    logger.info('socket.io client disconnected')
-"""
 
 # #########################################################################
 # All routes below this line should apply the @enforce_login decorater in
