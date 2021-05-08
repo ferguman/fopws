@@ -7,7 +7,7 @@ Click==7.0
 dnspython==1.16.0
 docutils==0.14
 ecdsa==0.13
-eventlet==0.25.0
+eventlet==0.31.0
 Flask==1.1.1
 Flask-Cors==3.0.7
 Flask-SocketIO==4.1.0
